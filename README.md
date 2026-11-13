@@ -11,6 +11,22 @@ Guilherme Dias · Enzo Sprengoski · Murilo Jeronymo
 
 ---
 
+## ⬇️ Baixar e executar
+
+**[Baixar o ColorSense para Windows (ColorSense-Portable.exe, ~72 MB)](https://github.com/MuriloJeronymo/Color-Sense/raw/main/executavel/ColorSense-Portable.exe)**
+
+Não precisa instalar: baixe o arquivo e dê dois cliques. Requer **Windows 10 ou 11** e conexão com a internet para entrar na conta.
+
+1. Ao abrir, o Windows mostra a tela azul **"O Windows protegeu o computador"**. Clique em **Mais informações** e depois em **Executar assim mesmo**.
+2. Na primeira tela, escolha **Cadastrar** e informe nome, e-mail, senha e, se souber, o seu tipo de daltonismo.
+3. Antes de usar o filtro, desative os filtros de cor e a Luz noturna do Windows.
+
+> ⚠️ **Antivírus.** O executável não tem assinatura digital de código (um certificado pago que um projeto acadêmico não tem), por isso o SmartScreen avisa e alguns antivírus podem bloquear o arquivo ou colocá-lo em quarentena. O mesmo pode acontecer porque o programa captura a tela para desenhar os padrões e altera as cores de toda a tela. É um falso positivo: o código-fonte está todo neste repositório. Se for bloqueado, restaure o arquivo da quarentena e adicione-o às exceções do antivírus.
+
+Fechar a janela mantém o ColorSense rodando no ícone perto do relógio; para encerrar, clique nele com o botão direito e escolha **Sair**. Para remover, basta apagar o arquivo.
+
+---
+
 ## 📖 Sobre o projeto
 
 O **ColorSense** é um aplicativo de desktop que ajuda pessoas com daltonismo (discromatopsia) a distinguir cores em **toda a tela do computador**, em tempo real — não apenas dentro de um site ou programa específico.
