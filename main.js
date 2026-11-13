@@ -12,16 +12,17 @@ if (envFile) {
   });
 }
 
-const { app, BrowserWindow, Tray, Menu, ipcMain, screen, desktopCapturer, globalShortcut } = require('electron');
+const { app, BrowserWindow, Tray, Menu, ipcMain, screen, desktopCapturer, shell, globalShortcut } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
 const { getPreferences, savePreferences } = require('./src/store/preferences');
-const { SIMULATION_MATRICES, getCorrectionMatrix } = require('./src/algorithms/colorFilters');
+const { SIMULATION_MATRICES, CORRECTION_MATRICES, getCorrectionMatrix } = require('./src/algorithms/colorFilters');
 const { analyzeColorPair } = require('./src/algorithms/colorChecker');
 const { colorName } = require('./src/algorithms/colorNames');
 const { trayIcon } = require('./src/tray/trayIcons');
 const { signUp, signIn, signOut, getSession, getUser } = require('./src/store/auth');
 const { getScenes, createScene, updateScene, deleteScene, addPatternRule, updatePatternRule, deletePatternRule } = require('./src/store/sceneStore');
+const atualizacao = require('./src/updater');
 
 let mainWindow    = null;
 let tray          = null;
@@ -29,7 +30,7 @@ let colorDaemon   = null;
 let daemonReady   = false;
 let pendingCommand = null;
 let appQuitting   = false;
-let overlayWindow = null;
+let overlayWindows = [];
 let cachedRules   = [];
 
 // Modo Criador — simulação de daltonismo para designers/devs.
@@ -48,6 +49,11 @@ const SHORTCUTS = [
   { id: 'sim',      accelerator: 'CommandOrControl+Alt+S', label: 'Ctrl+Alt+S', description: 'Liga/desliga a simulação', ok: false }
 ];
 
+// Vira true quando a abertura termina. Antes disso, abrir o programa de novo
+// não cria janela: ou a abertura ainda vai criar a sua, ou está instalando uma
+// atualização e o app vai fechar — criar outra aqui daria janela duplicada.
+let aberturaConcluida = false;
+
 app.setAppUserModelId('com.colorsense.app');
 
 // Instância única — se o app já está aberto, foca a janela existente
@@ -55,9 +61,34 @@ const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
   app.quit();
 } else {
-  app.on('second-instance', () => {
-    if (mainWindow) { mainWindow.show(); mainWindow.focus(); }
-  });
+  app.on('second-instance', () => { if (aberturaConcluida) mostrarJanela(); });
+}
+
+// Traz o usuário de volta para alguma janela, sempre.
+//
+// Antes isto era `if (mainWindow) mainWindow.show()`. Bastava fechar a tela de
+// login — ou fazer logout e fechar — para mainWindow ficar null e NADA mais
+// abrir: nem clicar na bandeja, nem abrir o programa de novo. O app seguia
+// rodando, invisível e inalcançável, e só o Gerenciador de Tarefas resolvia.
+async function mostrarJanela() {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.show(); mainWindow.focus(); return;
+  }
+  if (authWindow && !authWindow.isDestroyed()) {
+    authWindow.show(); authWindow.focus(); return;
+  }
+
+  // Nenhuma janela viva: a sessão decide qual abrir.
+  let sessao = null;
+  try { sessao = await getSession(); } catch (_) {}
+
+  if (sessao) {
+    createMainWindow();
+    applyCurrentFilter();
+    refreshActiveRules();
+  } else {
+    createAuthWindow();
+  }
 }
 
 let authWindow = null;
@@ -78,9 +109,15 @@ function createAuthWindow() {
   authWindow.loadFile(path.join(__dirname, 'src', 'auth', 'auth.html'));
   authWindow.setMenuBarVisibility(false);
 
+  authWindow.on('closed', () => { authWindow = null; });
+
+  // removeAllListeners antes do once: createAuthWindow pode ser chamada de
+  // novo (logout, ou reabrir depois de fechar) e os listeners empilhariam.
+  ipcMain.removeAllListeners('auth:success');
+
   // Após login bem-sucedido, abre o painel principal
   ipcMain.once('auth:success', () => {
-    authWindow.close();
+    if (authWindow && !authWindow.isDestroyed()) authWindow.close();
     authWindow = null;
     createMainWindow();
     applyCurrentFilter();
@@ -118,35 +155,71 @@ function createMainWindow() {
 
 // ── Overlay Window ────────────────────────────────────────────────────────────
 
-function createOverlayWindow() {
-  const { width, height } = screen.getPrimaryDisplay().bounds;
+// Uma janela por monitor. O filtro de cor é global do Windows e cobre todos os
+// monitores sozinho, mas os padrões visuais são desenhados por nós — com uma
+// janela só, eles apareciam apenas no monitor primário.
+function createOverlayWindows() {
+  destroyOverlayWindows();
 
-  overlayWindow = new BrowserWindow({
-    x: 0, y: 0, width, height,
-    transparent: true,
-    frame: false,
-    alwaysOnTop: true,
-    skipTaskbar: true,
-    focusable: false,
-    show: true,
-    webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true,
-      preload: path.join(__dirname, 'src', 'ui', 'overlay-preload.js')
-    }
-  });
+  for (const display of screen.getAllDisplays()) {
+    const { x, y, width, height } = display.bounds;
 
-  overlayWindow.setIgnoreMouseEvents(true, { forward: true });
-  // Proteção de captura desligada: o filtro aparece em prints e compartilhamento de tela.
-  overlayWindow.setContentProtection(false);
-  overlayWindow.setAlwaysOnTop(true, 'screen-saver');
-  overlayWindow.loadFile(path.join(__dirname, 'src', 'ui', 'overlay.html'));
+    const win = new BrowserWindow({
+      x, y, width, height,
+      transparent: true,
+      frame: false,
+      alwaysOnTop: true,
+      skipTaskbar: true,
+      focusable: false,
+      show: true,
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        preload: path.join(__dirname, 'src', 'ui', 'overlay-preload.js')
+      }
+    });
 
-  // Garante que o overlay receba as regras e o indicador mesmo após reload/startup
-  overlayWindow.webContents.on('did-finish-load', () => {
-    syncOverlay();
-    sendIndicator(getStatus());
-  });
+    win.setIgnoreMouseEvents(true, { forward: true });
+    // Proteção de captura desligada: o filtro aparece em prints e compartilhamento de tela.
+    win.setContentProtection(false);
+    win.setAlwaysOnTop(true, 'screen-saver');
+    win.loadFile(path.join(__dirname, 'src', 'ui', 'overlay.html'));
+
+    win.webContents.on('did-finish-load', () => {
+      // Cada overlay precisa capturar o SEU monitor, não o primeiro da lista.
+      // As dimensões vão junto porque a janela é limitada à área de trabalho
+      // (1920x1032 com a barra de tarefas), enquanto a captura de tela vem no
+      // tamanho cheio do monitor (1920x1080). Dimensionar o canvas pela janela
+      // desalinha o mapeamento de coordenadas da máscara.
+      win.webContents.send('overlay-display', {
+        id: String(display.id), width, height
+      });
+      // Regras e indicador de estado (M4) também após reload/startup
+      syncOverlay();
+      sendIndicator(getStatus());
+    });
+
+    overlayWindows.push({ win, displayId: String(display.id) });
+  }
+}
+
+function destroyOverlayWindows() {
+  for (const { win } of overlayWindows) {
+    try { if (!win.isDestroyed()) win.destroy(); } catch (_) {}
+  }
+  overlayWindows = [];
+}
+
+// Plugar ou desplugar um monitor recria os overlays: sem isso, o monitor novo
+// fica sem padrões e o removido deixa uma janela órfã.
+function observarMonitores() {
+  const recriar = () => {
+    if (appQuitting) return;
+    createOverlayWindows();
+  };
+  screen.on('display-added', recriar);
+  screen.on('display-removed', recriar);
+  screen.on('display-metrics-changed', recriar);
 }
 
 // Recarrega do Supabase as regras da cena ativa e empurra para o overlay
@@ -182,39 +255,76 @@ function patternsShown() {
 }
 
 function syncOverlay() {
-  if (!overlayWindow) return;
-  if (patternsShown()) {
-    overlayWindow.webContents.send('overlay-rules', cachedRules);
-  } else {
-    overlayWindow.webContents.send('overlay-clear');
+  if (!overlayWindows.length) return;
+  const mostrar = patternsShown();
+
+  for (const { win } of overlayWindows) {
+    if (win.isDestroyed()) continue;
+    win.webContents.send(mostrar ? 'overlay-rules' : 'overlay-clear', cachedRules);
   }
+}
+
+// Overlay do monitor principal: é nele que o indicador de estado aparece
+function primaryOverlay() {
+  const id = String(screen.getPrimaryDisplay().id);
+  const o = overlayWindows.find(w => w.displayId === id && !w.win.isDestroyed()) || overlayWindows.find(w => !w.win.isDestroyed());
+  return o ? o.win : null;
 }
 
 // O overlay captura a tela via getUserMedia (stream contínuo, acelerado por GPU).
 // Aqui só fornecemos o id da fonte de captura.
-ipcMain.handle('overlay:get-source', async () => {
+ipcMain.handle('overlay:get-source', async (_evt, displayId) => {
   const sources = await desktopCapturer.getSources({
     types: ['screen'],
     thumbnailSize: { width: 0, height: 0 }
   });
-  return sources.length ? sources[0].id : null;
+  if (!sources.length) return null;
+
+  // Cada overlay tem que capturar o monitor onde ele está. Pegar sources[0]
+  // fazia todos capturarem o mesmo monitor.
+  const doMonitor = displayId && sources.find(s => String(s.display_id) === String(displayId));
+  return (doMonitor || sources[0]).id;
 });
 
 // ── Color Daemon (Windows Magnification API) ─────────────────────────────────
 
 function startColorDaemon() {
-  if (colorDaemon) return;
+  if (colorDaemon || appQuitting) return;
 
-  // No executável o script fica fora do .asar (asarUnpack), pois o PowerShell não lê dentro dele
-  const scriptPath = path.join(__dirname, 'src', 'native', 'colorDaemon.ps1')
-    .replace('app.asar', 'app.asar.unpacked');
+  // No app empacotado o código vive dentro de app.asar, que é um FS virtual
+  // visível só para o Electron. O powershell.exe é um processo externo e não
+  // consegue abrir o script ali — por isso o asarUnpack no package.json joga
+  // src/native/ para app.asar.unpacked, e o caminho é redirecionado aqui.
+  const scriptPath = path
+    .join(__dirname, 'src', 'native', 'colorDaemon.ps1')
+    .replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`);
 
+  if (!fs.existsSync(scriptPath)) {
+    console.error('[ColorDaemon] script não encontrado em', scriptPath);
+    return;
+  }
+
+  // O -ParentPid liga o vigia do daemon: ele acompanha este processo e se
+  // encerra junto. Sem isso, um encerramento anormal poderia deixar o filtro
+  // preso na tela inteira, sem nenhuma janela para desligá-lo.
   colorDaemon = spawn('powershell.exe', [
     '-ExecutionPolicy', 'Bypass',
     '-NonInteractive',
     '-WindowStyle', 'Hidden',
-    '-File', scriptPath
+    '-File', scriptPath,
+    '-ParentPid', String(process.pid)
   ], { windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
+
+  // Escrever num daemon que já morreu (travou, foi fechado ou o app está
+  // saindo) falha com EPIPE de forma assíncrona, no próprio stream. Sem este
+  // ouvinte o Node trata a falha como exceção não capturada: o Electron abre a
+  // caixa "A JavaScript error occurred in the main process" e, durante a
+  // saída, essa caixa ainda impede o processo de terminar.
+  colorDaemon.stdin.on('error', (err) => {
+    if (!['EPIPE', 'ERR_STREAM_DESTROYED', 'ERR_STREAM_WRITE_AFTER_END'].includes(err.code)) {
+      console.error('[ColorDaemon] stdin:', err);
+    }
+  });
 
   let buf = '';
 
@@ -271,19 +381,30 @@ function sendToDaemon(command) {
 
 function stopColorDaemon() {
   if (!colorDaemon) return;
-  try {
-    _sendToDaemon({ action: 'exit' });
-    setTimeout(() => { if (colorDaemon) colorDaemon.kill(); }, 1000);
-  } catch (_) {
-    colorDaemon.kill();
-  }
+  const d = colorDaemon;
+  colorDaemon = null;
+  daemonReady = false;
+  // 'clear' devolve a tela ao normal, e o fim do stdin (EOF) faz o daemon sair
+  // do laço, restaurar a tela de novo e encerrar sozinho. Sem kill() logo em
+  // seguida: matar o processo com escritas ainda na fila gerava EPIPE na saída.
+  // Se o daemon estiver travado, o vigia -ParentPid o derruba quando o app
+  // terminar.
+  try { d.stdin.end(JSON.stringify({ action: 'clear' }) + '\n'); } catch (_) {}
 }
 
 // ── Filter Logic ─────────────────────────────────────────────────────────────
 
+// Intensidade do filtro: 0 = sem efeito, 1 = correção padrão, até 2 = reforçada
+// (calibração, M2). Versões anteriores gravavam o valor em "opacity" (0 a 1).
+function filterIntensity(prefs) {
+  return prefs.intensity ?? prefs.opacity ?? 1;
+}
+
 function applyCurrentFilter() {
   // A simulação (modo Criador) tem prioridade sobre o filtro de correção:
-  // o designer quer ver a tela exatamente como um daltônico veria.
+  // o designer quer ver a tela exatamente como um daltônico veria. Ela roda
+  // sempre em intensidade cheia — simular "pela metade" não corresponde a
+  // nenhuma visão real.
   if (simulationActive) {
     const sim = SIMULATION_MATRICES[simulationType];
     sendToDaemon(sim ? { action: 'apply', matrix: sim.matrix } : { action: 'clear' });
@@ -300,9 +421,32 @@ function applyCurrentFilter() {
 
   if (!prefs.filterActive || prefs.filterType === 'normal') {
     sendToDaemon({ action: 'clear' });
-  } else {
-    sendToDaemon({ action: 'apply', matrix: getCorrectionMatrix(prefs.filterType, prefs.intensity ?? 1) });
+    return;
   }
+
+  const filter = CORRECTION_MATRICES[prefs.filterType];
+
+  // Acromatopsia e acromatomalia não têm correção possível por matriz linear:
+  // não sobra canal funcional para onde realocar a informação de cor perdida.
+  // Limpar é honesto; aplicar a identidade fingindo que filtrou, não.
+  if (!filter || !filter.temCorrecao) {
+    sendToDaemon({ action: 'clear' });
+    return;
+  }
+
+  sendToDaemon({ action: 'apply', matrix: getCorrectionMatrix(prefs.filterType, filterIntensity(prefs)) });
+}
+
+// O toggle universal precisa desligar TUDO que altera a tela. Sem isto, com a
+// simulação do Criador ligada o badge dizia "Desativado" enquanto a tela
+// continuava simulando daltonismo — o oposto do que o app se propõe a fazer.
+function setFilterActive(enabled) {
+  savePreferences({ filterActive: enabled });
+
+  // (o painel recebe o novo estado da simulação pelo notifyStateChanged)
+  if (!enabled) simulationActive = false;
+
+  refreshAll();
 }
 
 // ── Estado visível (M4) ──────────────────────────────────────────────────────
@@ -328,16 +472,18 @@ function getStatus() {
   }
 
   const parts = [];
-  if (prefs.filterType !== 'normal') parts.push(`Filtro ligado: ${typeLabel(prefs.filterType)}`);
+  // acromatopsia e acromatomalia não têm correção: o selo não finge que há
+  if (CORRECTION_MATRICES[prefs.filterType]?.temCorrecao) parts.push(`Filtro ligado: ${typeLabel(prefs.filterType)}`);
   if (patternsShown()) parts.push('Padrões ligados');
   if (!parts.length) parts.push('Filtro ligado: sem correção de cor');
   return { mode: 'filter', icon: '◐', text: parts.join(' · ') };
 }
 
 function sendIndicator(status) {
-  if (!overlayWindow) return;
+  const win = primaryOverlay();
+  if (!win) return;
   const { bounds, workArea } = screen.getPrimaryDisplay();
-  overlayWindow.webContents.send('overlay-status', {
+  win.webContents.send('overlay-status', {
     visible: getPreferences().showIndicator,
     icon: status.icon,
     text: status.text,
@@ -376,8 +522,7 @@ function refreshAll() {
 // ── Acesso rápido (M5) ───────────────────────────────────────────────────────
 
 function toggleFilter() {
-  savePreferences({ filterActive: !getPreferences().filterActive });
-  refreshAll();
+  setFilterActive(!getPreferences().filterActive);
 }
 
 function togglePatterns() {
@@ -399,11 +544,6 @@ function registerShortcuts() {
   });
 }
 
-function showPanel() {
-  const win = mainWindow || authWindow;
-  if (win) { win.show(); win.focus(); }
-}
-
 // ── Tray ─────────────────────────────────────────────────────────────────────
 
 function buildTrayMenu() {
@@ -414,7 +554,10 @@ function buildTrayMenu() {
   return Menu.buildFromTemplate([
     { label: `ColorSense — ${getStatus().text}`, enabled: false },
     { type: 'separator' },
-    { label: 'Abrir Painel', click: showPanel },
+    // Sempre habilitado: mostrarJanela() decide o que abrir conforme a sessão,
+    // e recria a janela se não houver nenhuma viva. Desabilitar este item
+    // deixava o usuário sem nenhuma saída depois de fechar a tela de login.
+    { label: 'Abrir Painel', click: () => { mostrarJanela(); } },
     {
       label: withShortcut('Filtro Ativo', 'filter'),
       type: 'checkbox',
@@ -457,9 +600,27 @@ function buildTrayMenu() {
         notifyStateChanged();
       }
     },
+    ...itensDeAtualizacao(),
     { type: 'separator' },
     { label: 'Sair', click: () => { appQuitting = true; app.quit(); } }
   ]);
+}
+
+// Itens da bandeja que só aparecem quando há algo a fazer com uma atualização.
+function itensDeAtualizacao() {
+  const { tipo, versao } = atualizacao.estadoAtual();
+  if (tipo === 'pronta') {
+    return [{ type: 'separator' },
+      { label: `Reiniciar e atualizar (versão ${versao})`, click: () => atualizacao.instalarAgora() }];
+  }
+  if (tipo === 'disponivel') {
+    return [{ type: 'separator' },
+      { label: `Baixar a versão ${versao}`, click: () => shell.openExternal(atualizacao.PAGINA_DE_DOWNLOAD) }];
+  }
+  if (tipo === 'baixando') {
+    return [{ type: 'separator' }, { label: `Baixando a versão ${versao}...`, enabled: false }];
+  }
+  return [];
 }
 
 function createTray() {
@@ -493,8 +654,11 @@ async function pickScreenColor() {
 
   // Esconde o painel, os padrões e o indicador para não aparecerem na captura
   mainWindow?.hide();
-  overlayWindow?.webContents.send('overlay-clear');
-  overlayWindow?.webContents.send('overlay-status', { visible: false });
+  for (const { win } of overlayWindows) {
+    if (win.isDestroyed()) continue;
+    win.webContents.send('overlay-clear');
+    win.webContents.send('overlay-status', { visible: false });
+  }
   await new Promise(r => setTimeout(r, 250));
 
   let image = null;
@@ -570,6 +734,16 @@ ipcMain.on('picker:result', (_, hex) => {
 
 ipcMain.handle('get-preferences', () => getPreferences());
 
+// Fonte única da verdade sobre quais tipos têm correção possível por matriz
+// linear. A interface usa isto para não oferecer um filtro que não faz nada.
+ipcMain.handle('filters:get-info', () => {
+  const info = {};
+  for (const [key, f] of Object.entries(CORRECTION_MATRICES)) {
+    info[key] = { temCorrecao: f.temCorrecao };
+  }
+  return info;
+});
+
 ipcMain.handle('save-preferences', (_, prefs) => {
   savePreferences(prefs);
   refreshAll();
@@ -577,8 +751,7 @@ ipcMain.handle('save-preferences', (_, prefs) => {
 });
 
 ipcMain.handle('toggle-overlay', (_, enabled) => {
-  savePreferences({ filterActive: enabled });
-  refreshAll();
+  setFilterActive(enabled);
   return getPreferences();
 });
 
@@ -690,25 +863,49 @@ ipcMain.handle('scenes:activate', (_, sceneId, filterType, rules) => {
 // ── App Lifecycle ─────────────────────────────────────────────────────────────
 
 app.whenReady().then(async () => {
-  const session = await getSession();
-
   registerShortcuts();
   createTray();
-  startColorDaemon();
-  createOverlayWindow();
 
-  if (session) {
-    await refreshActiveRules();
-    createMainWindow();
-    applyCurrentFilter();
-  } else {
-    createAuthWindow();
+  atualizacao.configurar({
+    aoMudar: () => { if (tray) tray.setContextMenu(buildTrayMenu()); },
+    avisar: (title, content) => { if (tray) tray.displayBalloon({ title, content, iconType: 'info' }); },
+    // quitAndInstall fecha as janelas ANTES do before-quit. Sem isto, o 'close'
+    // do painel cancela o fechamento (ele só esconde a janela), o app não sai
+    // e a atualização não é instalada.
+    antesDeInstalar: () => { appQuitting = true; }
+  });
+
+  let instalando = false;
+  try {
+    // Versão baixada numa sessão anterior: instala antes de abrir qualquer
+    // janela, para o app não aparecer e sumir logo depois.
+    instalando = await atualizacao.instalarPendenteNaAbertura();
+    if (instalando) return;
+
+    const session = await getSession();
+
+    startColorDaemon();
+    createOverlayWindows();
+    observarMonitores();
+
+    if (session) {
+      await refreshActiveRules();
+      createMainWindow();
+      applyCurrentFilter();
+    } else {
+      createAuthWindow();
+    }
+  } finally {
+    aberturaConcluida = true;
+    // Mesmo se a abertura falhar: uma versão nova pode ser justamente a correção.
+    if (!instalando) atualizacao.iniciarVerificacoes();
   }
 });
 
 app.on('before-quit', () => {
   appQuitting = true;
   stopColorDaemon();
+  destroyOverlayWindows();
 });
 
 app.on('will-quit', () => globalShortcut.unregisterAll());

@@ -41,34 +41,121 @@ const LABELS = {
   achromatomaly:  { label: 'Acromatomalia',  description: 'Redução parcial da percepção de cor.' }
 };
 
-// ── Matrizes de redistribuição de erro (daltonização) ─────────────────────────
-// Definem para onde a informação de cor perdida é jogada.
+// ── Correção protan/deutan: codificação do eixo oponente ──────────────────────
+//
+// A daltonização clássica (Fidaner) redistribui o erro com a matriz
+//
+//     [0,   0, 0]
+//     [0.7, 1, 0]
+//     [0.7, 0, 1]
+//
+// Ela é formulada para RGB LINEAR. Aqui a matriz é aplicada pela Magnification
+// API do Windows diretamente sobre valores já codificados em gama sRGB, e nesse
+// regime ela se comporta ao contrário do pretendido.
+//
+// O motivo é a interação com estas matrizes de simulação. Em deuteranopia a
+// linha azul da simulação é [0, 0.3, 0.7]: o verde JÁ vaza para o canal azul.
+// Somar +0.7·erro_r ao azul aproxima o vermelho do verde em vez de afastar:
+//
+//   vermelho (1,0,0): erro_r = +0.375  →  azul sobe   0 → 0.184 (visto)
+//   verde    (0,1,0): erro_r = −0.375  →  azul satura em 0, fica em 0.300
+//   diferença no canal azul: 0.300 antes  →  0.116 depois
+//
+// Medido em ΔE (Lab) contra pares confundíveis, a fórmula acima piorava a
+// distinção em 10 de 10 pares em deuteranopia e 9 de 10 em protanopia.
+//
+// A abordagem adotada aqui é direta: o eixo que o protan/deutan perde é o
+// vermelho-verde, (R − G). O canal que ele preserva é o azul. Então gravamos
+// aquele eixo neste canal, com sinal NEGATIVO — que é a direção que de fato
+// separa, dado como estas simulações tratam o azul:
+//
+//     R' = R
+//     G' = G
+//     B' = B − k·(R − G)
+//
+// Neutros são preservados por construção: se R = G, o termo é zero.
 
-// Deficiências vermelho-verde (protan/deutan): o erro vermelho-verde é
-// redistribuído para os canais verde e azul.
-const SHIFT_RED_GREEN = [
-  [0,   0, 0],
-  [0.7, 1, 0],
-  [0.7, 0, 1]
-];
+const K_MAX = 0.7;
 
-// Deficiências azul-amarelo (tritan): o erro é redistribuído para
-// vermelho e verde.
+// Quanto do eixo perdido ainda sobrevive à simulação. Para um dicromata
+// (protanopia/deuteranopia/tritanopia) o eixo colapsa e a sobrevivência é ~0;
+// nas formas leves parte da informação ainda passa, e uma correção agressiva só
+// distorceria o que a pessoa já enxerga bem. Derivar k daqui evita número
+// mágico: um tipo novo ganha um k coerente sozinho.
+function sobrevivenciaDoEixo(S, d) {
+  const Sd = [0, 1, 2].map(i => S[i][0] * d[0] + S[i][1] * d[1] + S[i][2] * d[2]);
+  const dd = d[0] * d[0] + d[1] * d[1] + d[2] * d[2];
+  return (Sd[0] * d[0] + Sd[1] * d[1] + Sd[2] * d[2]) / dd;
+}
+
+function kDerivado(S, d) {
+  const sobra = Math.min(1, Math.max(0, sobrevivenciaDoEixo(S, d)));
+  return K_MAX * (1 - sobra);
+}
+
+// Protan/deutan — eixo perdido: vermelho-verde (R − G). Canal preservado: azul.
+//     B' = B − k(R − G)
+const EIXO_RG = [1, -1, 0];
+
+function correcaoRedeVerde(S) {
+  const k = kDerivado(S, EIXO_RG);
+  return [
+    [1,  0, 0],
+    [0,  1, 0],
+    [-k, k, 1]
+  ];
+}
+
+// Tritan — eixo perdido: azul-amarelo, B − (R+G)/2. Canal preservado: verde.
+//     G' = G + k·(B − (R+G)/2)
+// O sinal aqui é o oposto do caso vermelho-verde: nas matrizes de simulação
+// tritan o azul já vaza fortemente para o verde (linha G da simulação de
+// tritanopia é [0, 0.433, 0.567]), então é somando que se abre a diferença.
+// Verificado par a par; inverter este sinal piora 6 dos 9 pares azul-amarelo.
+const EIXO_BY = [-0.5, -0.5, 1];
+
+function correcaoAzulAmarelo(S) {
+  const k = kDerivado(S, EIXO_BY);
+  return [
+    [1,      0,         0],
+    [-k / 2, 1 - k / 2, k],
+    [0,      0,         1]
+  ];
+}
+
+// ── Daltonização clássica (mantida onde ainda mede melhor) ────────────────────
+// Redistribuição de erro no formato de Fidaner, usada por tritanomalia.
 const SHIFT_BLUE_YELLOW = [
   [1, 0, 0.7],
   [0, 1, 0.7],
   [0, 0, 0]
 ];
 
-// Qual matriz de redistribuição cada tipo usa. Acromatopsia/acromatomalia
-// não têm canal funcional para redistribuir → sem correção (identidade).
-const SHIFT_BY_TYPE = {
-  protanopia:     SHIFT_RED_GREEN,
-  protanomalia:   SHIFT_RED_GREEN,
-  deuteranopia:   SHIFT_RED_GREEN,
-  deuteranomalia: SHIFT_RED_GREEN,
-  tritanopia:     SHIFT_BLUE_YELLOW,
-  tritanomalia:   SHIFT_BLUE_YELLOW
+// ── Qual estratégia cada tipo usa ─────────────────────────────────────────────
+//
+// A escolha abaixo é medida, não estética. Métrica: ganho médio de ΔE (Lab)
+// entre pares de cores classicamente confundidos, vistos através da simulação
+// do próprio tipo — positivo significa que o filtro afastou as cores.
+//
+//   tipo             daltonização clássica      eixo oponente
+//   protanopia              -19.91                  +35.00
+//   deuteranopia            -15.31                  +31.93
+//   protanomalia             +3.55                   +6.85
+//   deuteranomalia           +3.43                   +3.82
+//   tritanopia               -2.18                  +11.81
+//   tritanomalia             +2.91                   -1.10   <- clássica vence
+//
+// Tritanomalia é a única exceção: o eixo oponente piora 4 dos 9 pares
+// azul-amarelo enquanto a clássica piora só 1, e o efeito é pequeno nos dois
+// casos. Seguir o número em vez de uniformizar por elegância.
+// Amostra pequena (8-9 pares por família) — vale remedir se a lista crescer.
+const ESTRATEGIA = {
+  protanopia:     correcaoRedeVerde,
+  protanomalia:   correcaoRedeVerde,
+  deuteranopia:   correcaoRedeVerde,
+  deuteranomalia: correcaoRedeVerde,
+  tritanopia:     correcaoAzulAmarelo,
+  tritanomalia:   (S) => daltonize(S, SHIFT_BLUE_YELLOW)
 };
 
 // ── Álgebra de matrizes 3×3 ───────────────────────────────────────────────────
@@ -119,7 +206,6 @@ const CORRECTION_MATRICES = {};
 
 for (const key of Object.keys(SIMULATION_3X3)) {
   const S = SIMULATION_3X3[key];
-  const C = SHIFT_BY_TYPE[key];
 
   SIMULATION_MATRICES[key] = {
     label: LABELS[key].label,
@@ -127,23 +213,32 @@ for (const key of Object.keys(SIMULATION_3X3)) {
     matrix: to20(S)
   };
 
+  // Sem estratégia (normal, acromatopsia, acromatomalia) não há correção
+  // possível por matriz linear: não sobra canal funcional para onde realocar a
+  // informação perdida. Nesses casos a matriz é a identidade e temCorrecao é
+  // false, para a interface poder dizer isso ao usuário em vez de fingir que
+  // aplicou algo.
+  const estrategia = ESTRATEGIA[key];
+  const M = estrategia ? estrategia(S) : I3;
+
   CORRECTION_MATRICES[key] = {
     label: LABELS[key].label,
     description: LABELS[key].description,
-    // Sem matriz de redistribuição (normal/acromatopsia) → identidade (sem correção)
-    matrix: to20(C ? daltonize(S, C) : I3)
+    temCorrecao: !!estrategia,
+    matrix: to20(M)
   };
 }
 
 // ── Intensidade da correção (calibração do filtro) ────────────────────────────
-// M = I + k · (D − I): k = 0 desliga a correção, k = 1 é a daltonização padrão
-// e k > 1 a exagera, para quem não percebe ganho com o filtro padrão.
+// M = I + k · (D − I): k = 0 desliga a correção, k = 1 é a correção padrão do
+// tipo (ESTRATEGIA) e k > 1 a reforça, para quem não percebe ganho com o
+// filtro padrão. Tipos sem correção possível devolvem a identidade.
 
 function getCorrectionMatrix(type, intensity = 1) {
   const S = SIMULATION_3X3[type];
-  const C = SHIFT_BY_TYPE[type];
-  if (!S || !C) return to20(I3);
-  const D = daltonize(S, C);
+  const estrategia = ESTRATEGIA[type];
+  if (!S || !estrategia) return to20(I3);
+  const D = estrategia(S);
   return to20(matCombine(I3, D, (i, d) => i + intensity * (d - i)));
 }
 

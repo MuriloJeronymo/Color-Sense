@@ -65,7 +65,7 @@ O ColorSense é construído com **Electron**, que combina o **Chromium** (interf
 - **Filtro de cor** → o JavaScript *calcula* a matriz de transformação ([src/algorithms/colorFilters.js](src/algorithms/colorFilters.js)); o daemon PowerShell a *aplica* na tela inteira via Windows Magnification API (GPU).
 - **Padrões visuais** → o app captura a tela como vídeo, analisa o matiz de cada pixel e desenha texturas sobre a cor-alvo usando um `<canvas>` numa janela transparente sobreposta ([src/ui/overlay.js](src/ui/overlay.js)).
 
-📚 **Documentação técnica completa:** [docs/ColorSense-Documentacao-Tecnica.md](docs/ColorSense-Documentacao-Tecnica.md)
+📚 **Esquema do banco:** [supabase/schema.sql](supabase/schema.sql) — tabelas, políticas de RLS e restrições, comentados.
 
 ---
 
@@ -94,6 +94,7 @@ ColorSense/
 ├── .env                     # Credenciais do Supabase (NÃO versionado)
 ├── .env.example             # Template das credenciais
 ├── docs/                    # Documentação técnica
+├── site/                    # Guia do usuário (colorsense-guia.vercel.app)
 └── src/
     ├── algorithms/
     │   ├── colorFilters.js     # Matrizes de simulação e correção (daltonização)
@@ -148,7 +149,11 @@ SUPABASE_URL=sua_url_aqui
 SUPABASE_KEY=sua_chave_aqui
 ```
 
-> 🔑 **Credenciais de avaliação:** as credenciais reais do `.env` (URL e chave do Supabase) serão fornecidas **no comentário da entrega da ferramenta no Canvas**, junto com o trabalho. Basta copiá-las para o arquivo `.env` para que o login e as cenas funcionem.
+> 🔑 **Credenciais de avaliação:** a URL e a chave do Supabase são fornecidas **no comentário da entrega no Canvas**. Copie-as para o `.env` e o login passa a funcionar.
+>
+> A chave usada é a **publishable** (`sb_publishable_...`), que é pública por natureza — ela vai embutida no executável e é o RLS que protege os dados. A chave secreta (`sb_secret_...`) **nunca** deve ir para o `.env`: ela ignora o RLS inteiro e daria a qualquer usuário acesso aos dados de todos os outros.
+>
+> Projetos Supabase no plano gratuito são **pausados por inatividade**, e um projeto pausado deixa o app travado na tela de login. Se isso acontecer, restaure o projeto pelo painel antes de avaliar.
 
 **4. Inicie a aplicação**
 ```bash
@@ -158,16 +163,46 @@ npm start
 O app abrirá com a tela de login. Após autenticar, o painel principal aparece e um ícone fica disponível na **bandeja do sistema** (system tray).
 
 
+## 🔄 Atualizações
+
+A versão **instalada** se atualiza sozinha pelas releases deste repositório:
+
+- ao abrir e a cada 4 horas, o app consulta a última release do GitHub;
+- se houver versão nova, ela é baixada em segundo plano — só os blocos que mudaram, quando dá;
+- a instalação acontece quando o app é fechado pelo menu da bandeja ou, se ele não for fechado, na próxima abertura, **antes** de qualquer janela aparecer. O menu da bandeja também oferece **Reiniciar e atualizar**.
+
+A versão **portátil** não tem instalação para trocar: ela só avisa que existe uma versão nova.
+
+Cada verificação fica registrada em `%APPDATA%\colorsense\atualizacao.log` — é o arquivo a pedir quando uma atualização falhar no computador de alguém.
+
+### Como lançar uma versão
+
+1. Aumente a versão em `package.json` (por exemplo, `0.3.0` → `0.3.1`). O app só se atualiza para uma versão **maior** que a instalada.
+2. Gere os arquivos com `npm run build`. Saem em `dist/`: `ColorSense-Setup.exe`, `ColorSense-Setup.exe.blockmap`, `latest.yml` e `ColorSense-Portable.exe`.
+3. Publique a release com a tag `v` + versão, enviando **os quatro arquivos**:
+
+```bash
+gh release create v0.3.1 dist/ColorSense-Setup.exe dist/ColorSense-Setup.exe.blockmap dist/latest.yml dist/ColorSense-Portable.exe --title "ColorSense 0.3.1"
+```
+
+Sem o `latest.yml`, os apps instalados não enxergam a versão nova; sem o `.blockmap`, baixam o instalador inteiro. A release precisa estar publicada — rascunho e pré-lançamento não contam como a última.
+
+Os nomes dos arquivos não têm versão de propósito: o site aponta para `releases/latest/download/`, e o link continua certo a cada lançamento.
+
+> Se o `npm run build` falhar com `Cannot create symbolic link`, ative o **Modo de desenvolvedor** do Windows (Configurações → Sistema → Para desenvolvedores) e rode de novo. O electron-builder extrai ferramentas que contêm links simbólicos, e sem esse modo o Windows só permite criá-los como administrador.
+
 ## ⚠️ Limitações
 
 - **Apenas Windows.** O filtro de tela inteira usa a Windows Magnification API, que não existe em macOS/Linux. Embora o `package.json` tenha alvos de build para os três sistemas, **só o Windows é funcional**.
-- **Correção por matriz linear.** Recupera a distinção de cores redistribuindo informação, mas não "cria" o que foi perdido. Casos de acromatopsia (ausência total de cor) não têm correção por esse método.
+- **Correção por matriz linear.** Recupera a distinção de cores redistribuindo informação, mas não "cria" o que foi perdido. Acromatopsia e acromatomalia não têm correção possível por esse método — não sobra canal funcional para onde realocar a informação. Nesses dois casos a interface marca o filtro como indisponível em vez de aplicar uma matriz que não faz nada; a simulação deles continua funcionando na aba Criador.
+- **Distorção como contrapartida.** Afastar cores que a pessoa confunde significa deslocar cores que ela já enxergava bem. O slider *Intensidade do Filtro* existe para achar o equilíbrio — não há um valor certo universal.
+- **Relógio do sistema.** O token de sessão do Supabase é rejeitado se o relógio do computador estiver adiantado em relação ao servidor (`JWT issued at future`). Se as cenas não carregarem, verifique a sincronização de data e hora do Windows.
 - **Ajustes da Sprint 3** (verificador de cores, calibração, conta-gotas, indicador de estado e acesso rápido) foram verificados apenas por testes funcionais da equipe, sem nova rodada com usuários (Seção 6.9.3).
 
 ---
 
 <div align="center">
 
-ColorSense v0.1 · PUCPR · 2025–2026
+ColorSense v0.4 · PUCPR · 2025–2026
 
 </div>

@@ -1,0 +1,722 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Pesquisa de TCC da PUCPR sobre o ColorSense, programa que ajusta as cores da tela para quem tem daltonismo. Instale e responda em cerca de 20 minutos.">
+<meta name="robots" content="noindex">
+<meta property="og:title" content="Ajude a testar o ColorSense">
+<meta property="og:description" content="Pesquisa de TCC da PUCPR. Tendo daltonismo ou não, você pode ajudar: uns 20 minutos num computador com Windows.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%276%27 fill=%27%232C3AA8%27/%3E%3Ccircle cx=%279%27 cy=%2716%27 r=%274%27 fill=%27%23fff%27/%3E%3Ccircle cx=%2716%27 cy=%2716%27 r=%274%27 fill=%27%23fff%27 opacity=%27.68%27/%3E%3Ccircle cx=%2723%27 cy=%2716%27 r=%274%27 fill=%27%23fff%27 opacity=%27.4%27/%3E%3C/svg%3E">
+<style>*{box-sizing:border-box}html,body{margin:0}</style>
+</head>
+<body>
+<title>Guia do ColorSense</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@600&display=swap">
+
+<style>
+  :root {
+    --ground:#F5F6F9; --surface:#FFFFFF; --sunk:#EBEDF3;
+    --ink:#12151C; --ink-soft:#3E4453; --muted:#6B7183;
+    --rule:#D6DAE4; --rule-soft:#E7EAF1;
+    /* Azul de propósito: é o canal que protanopia e deuteranopia preservam,
+       e quem lê esta página tem daltonismo. */
+    --marca:#2C3AA8; --marca-fundo:#26318C; --marca-clara:#7C8AF0;
+    --accent-ink:#2A38A6; --accent-soft:#E6E9FD;
+    --atencao:#8A5000; --atencao-soft:#FCF0DC; --atencao-borda:#D9A15A;
+    --f-display:"IBM Plex Serif",Georgia,serif;
+    --f-body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+    --f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0E1116; --surface:#171B23; --sunk:#1F242E;
+      --ink:#E8EAF1; --ink-soft:#B6BCCA; --muted:#8E95A6;
+      --rule:#2C323E; --rule-soft:#232935;
+      --marca:#1B2440; --marca-fundo:#141C33; --marca-clara:#9AA6FF;
+      --accent-ink:#B4BFFF; --accent-soft:#1F2542;
+      --atencao:#E5AC61; --atencao-soft:#33280F; --atencao-borda:#7A5B22;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0E1116; --surface:#171B23; --sunk:#1F242E;
+    --ink:#E8EAF1; --ink-soft:#B6BCCA; --muted:#8E95A6;
+    --rule:#2C323E; --rule-soft:#232935;
+    --marca:#1B2440; --marca-fundo:#141C33; --marca-clara:#9AA6FF;
+    --accent-ink:#B4BFFF; --accent-soft:#1F2542;
+    --atencao:#E5AC61; --atencao-soft:#33280F; --atencao-borda:#7A5B22;
+  }
+
+  * { box-sizing:border-box; }
+  body {
+    background:var(--ground); color:var(--ink);
+    font-family:var(--f-body); font-size:17px; line-height:1.65;
+    margin:0; -webkit-font-smoothing:antialiased;
+  }
+  .container { max-width:1060px; margin:0 auto; padding:0 24px; }
+  .estreito { max-width:720px; margin:0 auto; padding:0 24px; }
+
+  /* ── Navegação ─────────────────────────────────────────── */
+  nav {
+    background:var(--marca); position:sticky; top:0; z-index:20;
+  }
+  nav .container {
+    display:flex; align-items:center; justify-content:space-between;
+    gap:20px; padding-top:16px; padding-bottom:16px; flex-wrap:wrap;
+  }
+  .logo { display:flex; align-items:center; gap:11px; }
+  .logo-pontos { display:flex; gap:4px; }
+  .logo-pontos i {
+    width:9px; height:9px; border-radius:50%; display:block;
+    /* três pontos com formas de brilho diferentes, não só matizes diferentes */
+    background:#fff;
+  }
+  .logo-pontos i:nth-child(2) { opacity:.68; }
+  .logo-pontos i:nth-child(3) { opacity:.4; }
+  .logo b {
+    color:#fff; font-family:var(--f-display); font-size:19px; font-weight:600;
+    letter-spacing:-.01em;
+  }
+  nav ul { list-style:none; display:flex; gap:26px; margin:0; padding:0; flex-wrap:wrap; }
+  nav a {
+    color:#fff; opacity:.86; text-decoration:none; font-size:15.5px;
+  }
+  nav a:hover { opacity:1; text-decoration:underline; }
+  nav a:focus-visible { outline:2px solid #fff; outline-offset:4px; border-radius:3px; }
+
+  /* ── Hero ──────────────────────────────────────────────── */
+  .hero {
+    background:var(--marca); color:#fff;
+    padding:64px 0 80px; text-align:center;
+  }
+  .hero .eyebrow {
+    font-family:var(--f-mono); font-size:11.5px; letter-spacing:.16em;
+    text-transform:uppercase; opacity:.72; margin:0 0 22px;
+  }
+  .hero h1 {
+    font-family:var(--f-display); font-size:clamp(31px,5.2vw,46px);
+    line-height:1.15; letter-spacing:-.015em; margin:0 auto 22px;
+    max-width:17ch; text-wrap:balance;
+  }
+  .hero .sub {
+    font-size:18.5px; opacity:.9; margin:0 auto 34px; max-width:56ch; line-height:1.6;
+  }
+  .botao {
+    display:inline-flex; align-items:center; gap:11px;
+    background:#fff; color:var(--marca);
+    font-weight:600; font-size:17.5px; text-decoration:none;
+    padding:16px 34px; border-radius:7px;
+  }
+  .botao:hover { opacity:.92; }
+  .botao:focus-visible { outline:3px solid #fff; outline-offset:4px; }
+  .botao svg { width:19px; height:19px; flex:none; }
+  .versao {
+    font-family:var(--f-mono); font-size:13px; opacity:.7; margin:16px 0 0;
+  }
+  .hero .alt { font-size:15px; opacity:.82; margin:26px auto 0; max-width:52ch; }
+  .hero .alt a { color:#fff; }
+
+  /* Quem abre o link do WhatsApp no celular não consegue instalar o programa */
+  .so-celular { display:none; }
+  @media (hover:none) and (pointer:coarse) {
+    .so-celular {
+      display:block; margin:-12px auto 26px; max-width:36ch;
+      background:rgba(255,255,255,.12); border-radius:8px;
+      padding:11px 16px; font-size:15.5px; line-height:1.5;
+    }
+  }
+
+  /* Os dois passos da participação, lado a lado no topo */
+  .participar {
+    list-style:none; margin:0 auto; padding:0; max-width:760px;
+    display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:16px; text-align:left;
+  }
+  .participar li {
+    display:grid; grid-template-columns:auto 1fr; column-gap:14px; align-content:start;
+    background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.26);
+    border-radius:10px; padding:20px 22px 22px;
+  }
+  .participar-num {
+    grid-row:span 2; width:34px; height:34px; border-radius:50%;
+    border:1.5px solid rgba(255,255,255,.75);
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--f-mono); font-size:15px;
+  }
+  .participar-titulo { margin:0; font-size:18px; font-weight:600; line-height:1.35; }
+  .participar-info { margin:2px 0 0; font-family:var(--f-mono); font-size:12.5px; opacity:.75; }
+  .participar .botao {
+    grid-column:1 / -1; justify-content:center; margin-top:18px;
+    padding:13px 20px; font-size:16.5px;
+  }
+  @media (max-width:620px) {
+    .participar { grid-template-columns:1fr; }
+  }
+
+  /* Botão cheio, legível nos dois temas */
+  .estudo-acao {
+    display:flex; flex-wrap:wrap; align-items:center; justify-content:center;
+    gap:10px 18px; margin:30px 0 0;
+  }
+  .estudo-acao span { color:var(--muted); font-size:15px; }
+  .botao-cheio {
+    display:inline-flex; align-items:center; gap:10px;
+    background:var(--accent-ink); color:var(--surface);
+    font-weight:600; font-size:16.5px; text-decoration:none;
+    padding:13px 26px; border-radius:7px;
+  }
+  .botao-cheio:hover { opacity:.92; }
+  .botao-cheio:focus-visible { outline:3px solid var(--accent-ink); outline-offset:3px; }
+
+  /* ── Blocos ────────────────────────────────────────────── */
+  section { padding:64px 0; }
+  section.claro { background:var(--surface); border-block:1px solid var(--rule-soft); }
+
+  .titulo-secao { text-align:center; margin-bottom:14px; }
+  .titulo-secao .eyebrow {
+    font-family:var(--f-mono); font-size:11.5px; letter-spacing:.16em;
+    text-transform:uppercase; color:var(--muted); margin:0 0 14px;
+  }
+  h2 {
+    font-family:var(--f-display); font-size:clamp(25px,3.6vw,33px);
+    line-height:1.2; letter-spacing:-.012em; margin:0 auto 12px;
+    max-width:22ch; text-wrap:balance;
+  }
+  .titulo-secao p {
+    color:var(--muted); font-size:16.5px; margin:0 auto 44px; max-width:56ch;
+  }
+
+  h3 { font-size:18px; font-weight:600; margin:0 0 6px; }
+  p { margin:0 0 15px; }
+
+  a { color:var(--accent-ink); text-underline-offset:2px; }
+  a:focus-visible { outline:2px solid var(--marca); outline-offset:3px; border-radius:3px; }
+  code {
+    font-family:var(--f-mono); font-size:.87em; background:var(--sunk);
+    padding:2px 6px; border-radius:3px; word-break:break-word;
+  }
+
+  /* ── Cards de passo ────────────────────────────────────── */
+  .passos {
+    list-style:none; padding:0; margin:0;
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(280px,1fr)); gap:20px;
+  }
+  .passos li {
+    background:var(--surface); border:1px solid var(--rule-soft);
+    border-radius:8px; padding:26px 26px 28px;
+    display:flex; flex-direction:column;
+  }
+  section.claro .passos li { background:var(--ground); }
+  .numero {
+    width:38px; height:38px; border-radius:50%;
+    background:var(--marca); color:#fff;
+    font-family:var(--f-mono); font-size:16px;
+    display:flex; align-items:center; justify-content:center;
+    margin-bottom:18px; flex:none;
+  }
+  .passos p { color:var(--ink-soft); font-size:16px; margin:0 0 12px; }
+  .passos p:last-child { margin:0; }
+  .passos .duracao {
+    font-family:var(--f-mono); font-size:12px; letter-spacing:.06em;
+    text-transform:uppercase; color:var(--muted); margin:0 0 12px;
+  }
+
+  /* ── Aviso ─────────────────────────────────────────────── */
+  .aviso {
+    background:var(--atencao-soft); border-left:6px solid var(--atencao-borda);
+    border-radius:7px; padding:26px 30px; margin:0 auto; max-width:720px;
+  }
+  .aviso .rotulo {
+    font-family:var(--f-mono); font-size:11.5px; font-weight:500;
+    letter-spacing:.13em; text-transform:uppercase; color:var(--atencao);
+    margin:0 0 12px;
+  }
+  .aviso p:last-child { margin:0; }
+
+  /* ── Funções do sistema ────────────────────────────────── */
+  .funcoes { display:grid; gap:16px; }
+  .funcao {
+    background:var(--surface); border:1px solid var(--rule-soft);
+    border-radius:8px; padding:26px 30px;
+  }
+  section.claro .funcao { background:var(--ground); }
+  .funcao .onde {
+    font-family:var(--f-mono); font-size:11.5px; letter-spacing:.08em;
+    text-transform:uppercase; color:var(--muted); margin:0 0 14px;
+  }
+  .funcao p { color:var(--ink-soft); margin:0 0 13px; }
+  .funcao p:last-child { margin:0; }
+  .funcao b { color:var(--ink); }
+
+  /* ── Problemas ─────────────────────────────────────────── */
+  dl.problemas { margin:0; max-width:720px; margin-inline:auto; }
+  dl.problemas dt {
+    font-weight:600; font-size:17.5px;
+    margin-top:26px; padding-top:26px; border-top:1px solid var(--rule);
+  }
+  dl.problemas dt:first-of-type { border-top:none; padding-top:0; margin-top:0; }
+  dl.problemas dd { margin:9px 0 0; color:var(--ink-soft); }
+
+  .encerramento { text-align:center; }
+  .encerramento p { color:var(--ink-soft); max-width:58ch; margin:0 auto 15px; }
+
+  footer {
+    background:var(--marca-fundo); color:#fff; padding:52px 0 44px; font-size:15px;
+  }
+  footer .grade {
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(220px,1fr)); gap:32px;
+  }
+  footer h4 {
+    font-family:var(--f-mono); font-size:11.5px; letter-spacing:.13em;
+    text-transform:uppercase; opacity:.65; margin:0 0 12px; font-weight:500;
+  }
+  footer p { opacity:.88; margin:0 0 12px; line-height:1.5; }
+  footer a { color:#fff; }
+  footer .fim {
+    border-top:1px solid rgba(255,255,255,.16); margin-top:36px; padding-top:22px;
+    opacity:.62; font-size:14px;
+  }
+
+  .url-crua { margin:22px auto 0; max-width:640px; text-align:center; }
+  .url-crua p { font-size:14.5px; color:var(--muted); margin:0 0 10px; }
+  /* O endereço nunca quebra no meio: numa tela estreita ele rola dentro da
+     própria caixa, e o botão desce para a linha de baixo. */
+  .endereco { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:8px; }
+  .endereco code {
+    font-size:14px; padding:8px 12px; border-radius:6px; color:var(--ink);
+    white-space:nowrap; word-break:normal; overflow-x:auto; max-width:100%;
+  }
+  .copiar {
+    font:500 14px var(--f-body); color:var(--accent-ink); background:var(--surface);
+    border:1px solid var(--rule); border-radius:6px; padding:7px 14px; cursor:pointer;
+  }
+  .copiar:hover { border-color:var(--accent-ink); }
+  .copiar:focus-visible { outline:2px solid var(--marca); outline-offset:2px; }
+
+  @media (max-width:620px) {
+    body { font-size:16px; }
+    section { padding:48px 0; }
+    .hero { padding:48px 0 60px; }
+    .funcao, .aviso { padding:22px 20px; }
+    /* Com quatro links o menu quebrava em duas linhas e, fixo no topo,
+       ocupava um quinto da tela do celular. */
+    nav .container { gap:4px 16px; padding-top:10px; padding-bottom:10px; }
+    nav ul { gap:4px 12px; }
+    nav a { font-size:14px; }
+  }
+  @media (prefers-reduced-motion:reduce) { * { transition:none !important; } }
+</style>
+
+<nav>
+  <div class="container">
+    <span class="logo">
+      <span class="logo-pontos" aria-hidden="true"><i></i><i></i><i></i></span>
+      <b>ColorSense</b>
+    </span>
+    <ul>
+      <li><a href="#estudo">O estudo</a></li>
+      <li><a href="#instalacao">Instalação</a></li>
+      <li><a href="#funcoes">Como funciona</a></li>
+      <li><a href="#problemas">Problemas</a></li>
+    </ul>
+  </div>
+</nav>
+
+<div class="hero">
+  <div class="container">
+    <p class="eyebrow">Pesquisa de TCC · PUCPR</p>
+    <h1>Ajude a testar o ColorSense</h1>
+    <p class="sub">
+      O ColorSense ajusta as cores de toda a tela do computador para quem tem
+      daltonismo. Tendo daltonismo ou não, você pode ajudar: são uns 20 minutos
+      num computador com Windows.
+    </p>
+
+    <p class="so-celular">Está no celular? Abra este mesmo link no computador com Windows: é lá que a pesquisa acontece.</p>
+
+    <ol class="participar">
+      <li>
+        <span class="participar-num" aria-hidden="true">1</span>
+        <p class="participar-titulo">Instale o programa</p>
+        <p class="participar-info">69 MB · Windows 10 ou 11</p>
+        <a class="botao" href="https://github.com/enzoelle123/Color-Sense/releases/latest/download/ColorSense-Setup.exe">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 3v13"/><path d="M6 11l6 6 6-6"/><path d="M4 21h16"/>
+          </svg>
+          Baixar o instalador
+        </a>
+      </li>
+      <li>
+        <span class="participar-num" aria-hidden="true">2</span>
+        <p class="participar-titulo">Responda à pesquisa</p>
+        <p class="participar-info">15 a 20 minutos</p>
+        <a class="botao" href="/pesquisa" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M9 5H5v14h14v-4"/><path d="M13 3h8v8"/><path d="M21 3 11 13"/>
+          </svg>
+          Abrir a pesquisa
+        </a>
+      </li>
+    </ol>
+
+    <p class="alt">
+      Ao abrir o instalador, o Windows mostra um aviso. É esperado:
+      <a href="#instalacao">veja como seguir</a>. Não pode instalar programas
+      nesse computador? Use a <a href="https://github.com/enzoelle123/Color-Sense/releases/latest/download/ColorSense-Portable.exe">versão portátil</a>.
+    </p>
+  </div>
+</div>
+
+<section class="claro" id="estudo">
+  <div class="container">
+    <div class="titulo-secao">
+      <p class="eyebrow">Como é o estudo</p>
+      <h2>Um formulário, uns 20 minutos</h2>
+      <p>Tudo acontece num formulário on-line, no seu computador, na hora que você preferir. No fim, todos contam se o ColorSense foi útil.</p>
+    </div>
+
+    <ol class="passos">
+      <li>
+        <span class="numero" aria-hidden="true">1</span>
+        <h3>Leia o termo e comece</h3>
+        <p class="duracao">Todos</p>
+        <p>O formulário começa com o <a href="/termo">termo de consentimento</a>. Você marca que leu e
+        aceita, informa o seu e-mail e responde se tem daltonismo.</p>
+      </li>
+      <li>
+        <span class="numero" aria-hidden="true">2</span>
+        <h3>Com daltonismo: pranchas sem e com o filtro</h3>
+        <p class="duracao">Se você tem daltonismo ou não sabe</p>
+        <p>Você escreve o número que vê em 5 pranchas do teste de Ishihara com o filtro
+        desligado. Depois liga o filtro do ColorSense e faz outras 5 pranchas, diferentes
+        das primeiras.</p>
+      </li>
+      <li>
+        <span class="numero" aria-hidden="true">2</span>
+        <h3>Sem daltonismo: o modo Criador</h3>
+        <p class="duracao">Se você não tem daltonismo</p>
+        <p>Você liga a simulação na aba Criador do ColorSense e vê como uma pessoa com
+        daltonismo enxerga duas imagens.</p>
+      </li>
+    </ol>
+
+    <p class="estudo-acao">
+      <a class="botao-cheio" href="/pesquisa" target="_blank" rel="noopener">Abrir a pesquisa</a>
+      <span>Instale o programa antes, pelo botão do topo da página.</span>
+    </p>
+  </div>
+</section>
+
+<section id="instalacao">
+  <div class="container">
+    <div class="titulo-secao">
+      <p class="eyebrow">Passo a passo</p>
+      <h2>Instalando em cinco passos</h2>
+      <p>Não pede senha de administrador e não há telas de "avançar, avançar, concluir".</p>
+    </div>
+
+    <div class="aviso" style="margin-bottom:44px">
+      <p class="rotulo">Leia antes de instalar</p>
+      <p>
+        O Windows vai mostrar uma tela azul dizendo <b>"O Windows protegeu o
+        computador"</b>, e o único botão visível será "Não executar".
+      </p>
+      <p>
+        <b>Isso é esperado e não é vírus.</b> Acontece porque o programa não tem
+        assinatura digital — um certificado caro, que um trabalho de conclusão de
+        curso não tem. Qualquer programa sem esse certificado recebe o mesmo aviso.
+      </p>
+      <p>
+        Para seguir: clique em <b>Mais informações</b> e depois em
+        <b>Executar assim mesmo</b>.
+      </p>
+    </div>
+
+    <ol class="passos">
+      <li>
+        <span class="numero" aria-hidden="true">1</span>
+        <h3>Baixe o instalador</h3>
+        <p>Clique no botão no topo desta página. O arquivo se chama
+        <code>ColorSense-Setup.exe</code>.</p>
+      </li>
+      <li>
+        <span class="numero" aria-hidden="true">2</span>
+        <h3>Abra o arquivo baixado</h3>
+        <p>Normalmente ele fica na pasta Downloads, ou aparece na barra inferior
+        do navegador assim que termina.</p>
+      </li>
+      <li>
+        <span class="numero" aria-hidden="true">3</span>
+        <h3>Passe pelo aviso do Windows</h3>
+        <p><b>Mais informações</b> e depois <b>Executar assim mesmo</b>, como
+        explicado acima.</p>
+      </li>
+      <li>
+        <span class="numero" aria-hidden="true">4</span>
+        <h3>Aguarde alguns segundos</h3>
+        <p>Ele instala sozinho e abre em seguida. O atalho fica no Menu Iniciar
+        e na Área de Trabalho.</p>
+      </li>
+      <li>
+        <span class="numero" aria-hidden="true">5</span>
+        <h3>Crie a sua conta</h3>
+        <p>Na primeira tela vá em <b>Cadastrar</b>. Informe também o seu tipo de
+        daltonismo, se souber.</p>
+        <p>Use o <b>mesmo e-mail</b> que você vai informar na pesquisa.</p>
+      </li>
+    </ol>
+
+    <div class="url-crua">
+      <p>Se o botão de download não funcionar, copie este endereço e cole no navegador:</p>
+      <div class="endereco">
+        <code id="endereco-download">colorsense-guia.vercel.app/baixar</code>
+        <button type="button" class="copiar" data-alvo="endereco-download"
+                data-texto="https://colorsense-guia.vercel.app/baixar">Copiar</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="claro" id="funcoes">
+  <div class="container">
+    <div class="titulo-secao">
+      <p class="eyebrow">Como funciona</p>
+      <h2>O que cada parte do sistema faz</h2>
+      <p>A janela tem três abas no topo e um interruptor no rodapé. Só isso.</p>
+    </div>
+
+    <div class="funcoes">
+      <div class="funcao">
+        <h3>O interruptor do rodapé</h3>
+        <p class="onde">Rodapé da janela · visível em todas as abas</p>
+        <p>
+          Liga e desliga <b>tudo</b> de uma vez. Ao lado dele fica um selo
+          <b>escrito</b> dizendo o que está acontecendo agora: <b>Ativado</b>,
+          <b>Desativado</b> ou <b>Simulando</b>.
+        </p>
+        <p>
+          Sempre que a tela parecer estranha, olhe esse selo primeiro. Ele diz a
+          verdade sobre o estado do programa.
+        </p>
+      </div>
+
+      <div class="funcao">
+        <h3>Aba Filtro — a que você mais vai usar</h3>
+        <p class="onde">Primeira aba</p>
+        <p>
+          Escolha o seu tipo de daltonismo na grade. O programa passa a
+          recalcular as cores da tela inteira, o tempo todo — navegador,
+          planilha, jogo, vídeo. Não funciona só dentro de um site.
+        </p>
+        <p>
+          <b>Não sabe o seu tipo?</b> Experimente. Deuteranopia e protanopia são
+          as formas mais comuns. Fique com a que separar melhor as cores para
+          você: é isso que importa, não o nome.
+        </p>
+        <p>
+          <b>Acromatopsia e acromatomalia aparecem apagadas</b>, e é de propósito.
+          Quando não há percepção de cor para reforçar, não existe correção
+          possível por esse método. Preferimos dizer isso a fingir que o filtro
+          está funcionando.
+        </p>
+      </div>
+
+      <div class="funcao">
+        <h3>Intensidade do filtro</h3>
+        <p class="onde">Aba Filtro · barra abaixo da grade</p>
+        <p>
+          Controla a força da correção. Em 100% a separação entre as cores é
+          máxima, mas a tela fica visivelmente distorcida. Abaixando, a tela fica
+          mais natural e a correção mais discreta.
+        </p>
+        <p>
+          Não existe valor certo. Procure o ponto em que você ganha a distinção
+          de que precisa sem cansar a vista depois de algumas horas.
+        </p>
+      </div>
+
+      <div class="funcao">
+        <h3>Aba Cenas — perfis salvos</h3>
+        <p class="onde">Segunda aba</p>
+        <p>
+          Uma cena guarda uma configuração inteira com um nome — "Trabalho",
+          "Jogos", "Planilhas". Clicando em <b>Ativar</b>, tudo é aplicado de
+          uma vez.
+        </p>
+        <p>
+          Dentro de uma cena você também cria <b>regras de padrão</b>: escolhe
+          uma cor, e o programa desenha uma textura sobre ela na tela — listras,
+          pontos, hachuras. A cor passa a ser reconhecível pela <b>forma</b>, não
+          só pelo tom.
+        </p>
+        <p>
+          Útil quando duas cores continuam parecidas mesmo com o filtro ligado.
+          Marque uma delas com listras diagonais e a dúvida acaba.
+        </p>
+      </div>
+
+      <div class="funcao">
+        <h3>Aba Criador — para quem não tem daltonismo</h3>
+        <p class="onde">Terceira aba</p>
+        <p>
+          Faz o contrário do filtro: simula como um daltônico enxerga a tela.
+          Serve para designers e programadores conferirem o próprio trabalho.
+        </p>
+        <p>
+          <b>Se você tem daltonismo, não precisa dela.</b> E se ligar sem querer,
+          o selo do rodapé passa a dizer <b>Simulando</b> — o aviso de que a tela
+          está sendo piorada de propósito, não corrigida. Desligue no interruptor
+          do rodapé.
+        </p>
+      </div>
+
+      <div class="funcao">
+        <h3>Fechar a janela não fecha o programa</h3>
+        <p class="onde">Ícone perto do relógio, no canto da barra de tarefas</p>
+        <p>
+          Ao clicar no X, a janela some mas o filtro continua funcionando. É
+          assim de propósito: você configura uma vez e esquece que ele existe.
+        </p>
+        <p>
+          Para abrir de novo, clique no ícone do ColorSense perto do relógio.
+          Para encerrar de vez, clique nele com o botão direito e escolha
+          <b>Sair</b>.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="problemas">
+  <div class="container">
+    <div class="titulo-secao">
+      <p class="eyebrow">Suporte</p>
+      <h2>Se algo der errado</h2>
+      <p>Não resolveu com as dicas abaixo? Escreva para <a href="mailto:enzo.sprengoski@pucpr.edu.br">enzo.sprengoski@pucpr.edu.br</a> ou para qualquer pesquisador listado no rodapé.</p>
+    </div>
+
+    <dl class="problemas">
+      <dt>O Windows bloqueou e não deixa abrir</dt>
+      <dd>Clique em <b>Mais informações</b> e depois em <b>Executar assim
+      mesmo</b>. Se o antivírus bloquear, é o mesmo motivo: falta de assinatura
+      digital.</dd>
+
+      <dt>Estou num computador da escola ou do trabalho</dt>
+      <dd>O ColorSense não pede senha de administrador, mas a equipe de TI pode
+      bloquear programas baixados da internet. Se o instalador não abrir, tente a
+      <a href="https://github.com/enzoelle123/Color-Sense/releases/latest/download/ColorSense-Portable.exe">versão portátil</a>.
+      Se nem ela abrir, ou se o programa abrir mas as cores não mudarem de jeito
+      nenhum, é provável que o computador tenha restrições: fale com o
+      responsável pelo laboratório.</dd>
+
+      <dt>As cores ficaram estranhas e não voltam ao normal</dt>
+      <dd>Abra o programa pelo ícone perto do relógio e desligue o interruptor do
+      rodapé. Se ainda assim não voltar, clique com o botão direito nesse ícone e
+      escolha <b>Sair</b>. Reiniciar o computador também resolve.</dd>
+
+      <dt>Não consigo entrar na minha conta</dt>
+      <dd>Confira se o e-mail está igual ao que você usou no cadastro. Se
+      continuar, escreva para <a href="mailto:enzo.sprengoski@pucpr.edu.br">enzo.sprengoski@pucpr.edu.br</a>: pode ser problema do nosso servidor, não
+      seu.</dd>
+
+      <dt>O filtro não parece fazer nada</dt>
+      <dd>Confira se o selo do rodapé diz <b>Ativado</b> e se a intensidade não
+      está perto de zero. Se disser <b>Simulando</b>, a aba Criador ficou ligada
+      — desligue no interruptor do rodapé.</dd>
+
+      <dt>Tenho dois monitores</dt>
+      <dd>O filtro de cor funciona nos dois. Os padrões visuais também devem
+      funcionar, mas essa parte foi testada só com um monitor — se notar
+      diferença entre as telas, nos avise. É exatamente o tipo de coisa que
+      precisamos saber.</dd>
+
+      <dt>Quero sair do estudo</dt>
+      <dd>Sua participação é voluntária. Escreva para <a href="mailto:enzo.sprengoski@pucpr.edu.br">enzo.sprengoski@pucpr.edu.br</a> informando
+      o e-mail que você usou no formulário, e ela é retirada, junto com os dados já coletados, sem precisar
+      justificar e sem nenhum prejuízo.</dd>
+
+      <dt>Como atualizo o programa?</dt>
+      <dd>Não precisa fazer nada. O ColorSense procura versões novas sozinho,
+      baixa em segundo plano e instala na próxima vez que você abrir o programa
+      — ou na hora, se você escolher <b>Reiniciar e atualizar</b> no ícone da
+      bandeja. A versão portátil só avisa que há uma versão nova; nela é preciso
+      baixar de novo por esta página.</dd>
+
+      <dt>Como desinstalar</dt>
+      <dd><b>Configurações do Windows</b> → <b>Aplicativos</b> → procure
+      <b>ColorSense</b> → <b>Desinstalar</b>. Se usou a versão portátil, basta
+      apagar o arquivo.</dd>
+    </dl>
+  </div>
+</section>
+
+<section class="claro">
+  <div class="estreito encerramento">
+    <h2>Obrigado por participar</h2>
+    <p>
+      Todas as etapas foram pensadas para serem simples e reversíveis. Se
+      houver qualquer dúvida ou imprevisto, escreva para <a href="mailto:enzo.sprengoski@pucpr.edu.br">enzo.sprengoski@pucpr.edu.br</a> antes de desistir —
+      quase tudo se resolve em dois minutos.
+    </p>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <div class="grade">
+      <div>
+        <h4>O projeto</h4>
+        <p>ColorSense — ferramenta de acessibilidade visual para pessoas com daltonismo.</p>
+        <p>Trabalho de Conclusão de Curso do Bacharelado em Engenharia de Software (BES) da Pontifícia Universidade Católica do Paraná.</p>
+        <p><a href="/termo">Termo de Consentimento Livre e Esclarecido</a></p>
+        <p><a href="/pesquisa" target="_blank" rel="noopener">Formulário da pesquisa</a></p>
+      </div>
+      <div>
+        <h4>Pesquisadores</h4>
+        <p>Guilherme Dias<br><a href="mailto:g.dias3@pucpr.edu.br">g.dias3@pucpr.edu.br</a></p>
+        <p>Enzo Sprengoski<br><a href="mailto:enzo.sprengoski@pucpr.edu.br">enzo.sprengoski@pucpr.edu.br</a></p>
+        <p>Murilo Jeronymo<br><a href="mailto:murilo.jeronymo@pucpr.edu.br">murilo.jeronymo@pucpr.edu.br</a></p>
+      </div>
+      <div>
+        <h4>Orientação</h4>
+        <p>Profa. Patrícia Rucker de Bassi<br><a href="mailto:patricia.rbassi@pucpr.br">patricia.rbassi@pucpr.br</a></p>
+      </div>
+    </div>
+    <p class="fim">
+      Código aberto em
+      <a href="https://github.com/enzoelle123/Color-Sense">github.com/enzoelle123/Color-Sense</a>
+    </p>
+  </div>
+</footer>
+
+<script>
+  // Copia o endereço completo, com https://; na tela aparece a forma curta.
+  document.querySelectorAll(".copiar").forEach(function (botao) {
+    function confirmar() {
+      botao.textContent = "Copiado";
+      setTimeout(function () { botao.textContent = "Copiar"; }, 2000);
+    }
+    function selecionarECopiar() {
+      var alvo = document.getElementById(botao.getAttribute("data-alvo"));
+      var faixa = document.createRange();
+      faixa.selectNodeContents(alvo);
+      var selecao = window.getSelection();
+      selecao.removeAllRanges();
+      selecao.addRange(faixa);
+      try { if (document.execCommand("copy")) confirmar(); } catch (e) {}
+    }
+    botao.addEventListener("click", function () {
+      var texto = botao.getAttribute("data-texto");
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(texto).then(confirmar, selecionarECopiar);
+      } else {
+        selecionarECopiar();
+      }
+    });
+  });
+</script>
+
+</body>
+</html>

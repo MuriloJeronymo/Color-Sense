@@ -46,12 +46,24 @@ document.getElementById('form-register').addEventListener('submit', async (e) =>
   btn.textContent = 'Criando conta...';
 
   try {
-    await api.signUp({
+    const dados = await api.signUp({
       name: document.getElementById('reg-name').value.trim(),
       email: document.getElementById('reg-email').value.trim(),
       password: document.getElementById('reg-password').value,
       daltonismType: document.getElementById('reg-daltonism').value
     });
+
+    // Se o projeto Supabase exigir confirmação de email, o signUp devolve
+    // session = null. Seguir para o painel nesse caso abre a janela principal
+    // sem sessão e o getScenes() estoura. Hoje a confirmação está desligada,
+    // mas isto evita a surpresa caso alguém ligue depois.
+    if (!dados?.session) {
+      err.textContent = 'Conta criada. Confirme seu email e depois entre.';
+      btn.disabled = false;
+      btn.textContent = 'Criar conta';
+      return;
+    }
+
     api.notifyAuthSuccess();
   } catch (error) {
     err.textContent = traduzirErro(error.message);

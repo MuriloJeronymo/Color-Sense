@@ -8,7 +8,8 @@ const FILTERS = [
   { key: 'deuteranomalia', label: 'Deuteranomalia', desc: 'Leve — verde' },
   { key: 'tritanopia',     label: 'Tritanopia',     desc: 'Deficiência em azul' },
   { key: 'tritanomalia',   label: 'Tritanomalia',   desc: 'Leve — azul' },
-  { key: 'achromatopsia',  label: 'Acromatopsia',   desc: 'Sem percepção de cor' }
+  { key: 'achromatopsia',  label: 'Acromatopsia',   desc: 'Sem percepção de cor' },
+  { key: 'achromatomaly',  label: 'Acromatomalia',  desc: 'Percepção de cor reduzida' }
 ];
 
 const PATTERNS = [
@@ -53,6 +54,7 @@ const VERDICTS = {
 const state = {
   prefs: {},
   scenes: [],
+  filterInfo: {},       // { tipo: { temCorrecao } } — vem do processo principal
   user: null,
   view: 'filter',       // 'filter' | 'scenes' | 'creator' | 'edit' | 'calibrate'
   editingScene: null,
@@ -116,7 +118,7 @@ function renderFilter() {
     <div class="card profile-banner">
       <div class="profile-banner-row">
         <div>
-          <p class="label">${activeScene.name}</p>
+          <p class="label">${esc(activeScene.name)}</p>
           <p class="sublabel">Cena ativa · ${filterLabel}</p>
         </div>
         <button class="btn-sm" id="btn-switch">Trocar cena</button>
@@ -162,11 +164,22 @@ function renderFilter() {
 
   const grid = document.getElementById('filter-grid');
   FILTERS.forEach(f => {
+    // Acromatopsia não tem correção possível por matriz linear: não sobra
+    // canal funcional para onde realocar a cor perdida. Dizer isso é melhor
+    // que oferecer um botão que não faz nada.
+    const semCorrecao = f.key !== 'normal' && state.filterInfo[f.key]?.temCorrecao === false;
+
     const btn = document.createElement('button');
-    btn.className = 'filter-btn' + (f.key === state.prefs.filterType ? ' active' : '');
+    btn.className = 'filter-btn'
+      + (f.key === state.prefs.filterType ? ' active' : '')
+      + (semCorrecao ? ' filter-btn-indisponivel' : '');
     btn.dataset.key = f.key;
-    btn.innerHTML = `<span class="btn-label">${f.label}</span><span class="btn-desc">${f.desc}</span>`;
+    btn.disabled = semCorrecao;
+    if (semCorrecao) btn.title = 'Sem correção possível por filtro de cor';
+    btn.innerHTML = `<span class="btn-label">${esc(f.label)}</span>`
+      + `<span class="btn-desc">${semCorrecao ? 'Sem correção disponível' : esc(f.desc)}</span>`;
     btn.addEventListener('click', async () => {
+      if (semCorrecao) return;
       state.prefs = await api.setFilterType(f.key);
       render();
     });
@@ -343,9 +356,9 @@ function sceneCardHTML(s, activeId) {
     <div class="card profile-card ${isActive ? 'profile-active' : ''}">
       <div class="profile-card-top">
         <div class="profile-card-info">
-          <p class="profile-name">${s.name}</p>
+          <p class="profile-name">${esc(s.name)}</p>
           <div class="profile-meta">
-            <span class="chip">${filterLabel}</span>
+            <span class="chip">${esc(filterLabel)}</span>
             ${rulesCount > 0 ? `<span class="chip chip-rules">${rulesCount} regra${rulesCount > 1 ? 's' : ''}</span>` : ''}
             ${isActive ? '<span class="chip chip-active">Ativa</span>' : ''}
           </div>
@@ -361,17 +374,21 @@ function sceneCardHTML(s, activeId) {
 }
 
 async function activateScene(scene) {
-  state.prefs = await api.activateScene(scene.id, scene.filter_type, scene.pattern_rules || []);
-  render();
+  const r = await tentar('activateScene', async () => {
+    state.prefs = await api.activateScene(scene.id, scene.filter_type, scene.pattern_rules || []);
+  });
+  if (r.ok) render();
 }
 
 async function removeScene(scene) {
   if (!confirm(`Excluir a cena "${scene.name}"?`)) return;
-  await api.deleteScene(scene.id);
-  if (state.prefs.activeSceneId === scene.id)
-    state.prefs = await api.savePreferences({ activeSceneId: null });
-  state.scenes = await api.getScenes();
-  render();
+  const r = await tentar('removeScene', async () => {
+    await api.deleteScene(scene.id);
+    if (state.prefs.activeSceneId === scene.id)
+      state.prefs = await api.savePreferences({ activeSceneId: null });
+    state.scenes = await api.getScenes();
+  });
+  if (r.ok) render();
 }
 
 // ── View: Criador (simulação para designers/devs) ─────────────────────────────
@@ -439,6 +456,7 @@ function renderCreator() {
     btn.addEventListener('click', async () => {
       state.sim = await api.setSimType(f.key);
       renderCreator();
+      updateGlobalControls();
     });
     grid.appendChild(btn);
   });
@@ -446,6 +464,7 @@ function renderCreator() {
   document.getElementById('sim-toggle').addEventListener('change', async (e) => {
     state.sim = await api.toggleSim(e.target.checked);
     renderCreator();
+    updateGlobalControls();
   });
 
   bindCheckerEvents();
@@ -583,7 +602,7 @@ function renderEdit() {
         <label>Nome da cena</label>
         <input type="text" id="s-name" class="input"
           placeholder="Ex: Trabalho, Dev - VSCode, Casual..."
-          value="${s?.name ?? ''}">
+          value="${esc(s?.name ?? '')}">
       </div>
       <div class="field" style="margin-top:10px">
         <label>Filtro base de daltonismo</label>
@@ -638,10 +657,10 @@ function ruleItemHTML(r) {
   const patLabel = PATTERNS.find(pt => pt.key === r.pattern)?.label ?? r.pattern;
   return `
     <div class="rule-item">
-      <span class="rule-swatch" style="background:${r.color_hex}"></span>
+      <span class="rule-swatch" style="background:${/^#[0-9a-f]{6}$/i.test(r.color_hex) ? r.color_hex : '#888888'}"></span>
       <div class="rule-info">
-        <span class="rule-label">${r.label || r.color_hex}</span>
-        <span class="rule-sub">${patLabel} · tolerância ±${r.hue_tolerance}° · ${Math.round(r.opacity * 100)}% opacidade</span>
+        <span class="rule-label">${esc(r.label || r.color_hex)}</span>
+        <span class="rule-sub">${esc(patLabel)} · tolerância ±${Number(r.hue_tolerance)}° · ${Math.round(r.opacity * 100)}% opacidade</span>
       </div>
       <button class="btn-icon" id="edit-rule-${r.id}" title="Editar">✎</button>
       <button class="btn-icon btn-danger" id="del-rule-${r.id}" title="Remover">×</button>
@@ -691,7 +710,7 @@ function ruleFormHTML(r) {
         <label>Rótulo (opcional; se vazio, usa o nome da cor)</label>
         <input type="text" id="r-label" class="input"
           placeholder="Ex: Vermelho de alerta, Botões de erro..."
-          value="${r?.label && r.label !== r?.color_hex ? r.label : ''}">
+          value="${esc(r?.label && r.label !== r?.color_hex ? r.label : '')}">
       </div>
       <div class="field">
         <label>Tolerância de matiz: <span id="r-tol-val">±${tol}°</span></label>
@@ -758,23 +777,32 @@ function bindRuleFormEvents() {
 }
 
 async function saveScene() {
+  const botao      = document.getElementById('btn-save');
   const name       = document.getElementById('s-name').value.trim();
   const filterType = document.getElementById('s-filter').value;
   if (!name) { alert('Dê um nome à cena.'); return; }
 
-  if (!state.editingScene) {
-    const created = await api.createScene({ name, filterType });
-    state.scenes = await api.getScenes();
-    state.editingScene = state.scenes.find(s => s.id === created.id);
-    render();
-  } else {
-    await api.updateScene(state.editingScene.id, { name, filter_type: filterType });
-    if (state.prefs.activeSceneId === state.editingScene.id)
-      state.prefs = await api.setFilterType(filterType);
-    state.scenes = await api.getScenes();
-    state.editingScene = state.scenes.find(s => s.id === state.editingScene.id);
-    render();
-  }
+  const rotuloOriginal = botao.textContent;
+  botao.disabled = true;
+  botao.textContent = 'Salvando...';
+
+  const r = await tentar('saveScene', async () => {
+    if (!state.editingScene) {
+      const created = await api.createScene({ name, filterType });
+      state.scenes = await api.getScenes();
+      state.editingScene = state.scenes.find(s => s.id === created.id);
+    } else {
+      await api.updateScene(state.editingScene.id, { name, filter_type: filterType });
+      if (state.prefs.activeSceneId === state.editingScene.id)
+        state.prefs = await api.setFilterType(filterType);
+      state.scenes = await api.getScenes();
+      state.editingScene = state.scenes.find(s => s.id === state.editingScene.id);
+    }
+  });
+
+  botao.disabled = false;
+  botao.textContent = rotuloOriginal;
+  if (r.ok) render();
 }
 
 async function submitRule() {
@@ -792,26 +820,71 @@ async function submitRule() {
     opacity:      parseFloat(document.getElementById('r-opacity').value)
   };
 
-  if (state.editingRuleId) {
-    await api.updatePatternRule(state.editingRuleId, payload);
-  } else {
-    await api.addPatternRule(state.editingScene.id, payload);
-  }
+  const r = await tentar('submitRule', async () => {
+    if (state.editingRuleId) {
+      await api.updatePatternRule(state.editingRuleId, payload);
+    } else {
+      await api.addPatternRule(state.editingScene.id, payload);
+    }
+    state.scenes = await api.getScenes();
+    state.editingScene = state.scenes.find(s => s.id === state.editingScene.id);
+  });
+  if (!r.ok) return;
 
   state.editingRuleId = null;
-  state.scenes = await api.getScenes();
-  state.editingScene = state.scenes.find(s => s.id === state.editingScene.id);
   render();
 }
 
 async function deleteRule(ruleId) {
-  await api.deletePatternRule(ruleId);
-  state.scenes = await api.getScenes();
-  state.editingScene = state.scenes.find(s => s.id === state.editingScene.id);
-  render();
+  const r = await tentar('deleteRule', async () => {
+    await api.deletePatternRule(ruleId);
+    state.scenes = await api.getScenes();
+    state.editingScene = state.scenes.find(s => s.id === state.editingScene.id);
+  });
+  if (r.ok) render();
+}
+
+// ── Erros ─────────────────────────────────────────────────────────────────────
+
+// Toda chamada ao servidor pode falhar: internet caiu, sessão expirou, o
+// projeto Supabase foi pausado. Sem isto, a promessa rejeitava em silêncio e o
+// botão simplesmente não fazia nada — sem mensagem, sem pista.
+function traduzirFalha(erro) {
+  const m = (erro && erro.message) ? erro.message : String(erro || 'erro desconhecido');
+  if (/fetch failed|Failed to fetch|NetworkError|ENOTFOUND|ETIMEDOUT/i.test(m))
+    return 'Não foi possível falar com o servidor. Verifique a sua internet e tente de novo.';
+  if (/JWT|token|session|not authenticated|Unauthorized|401/i.test(m))
+    return 'A sua sessão expirou. Saia e entre de novo.';
+  if (/row-level security|42501/i.test(m))
+    return 'O servidor recusou a operação por permissão. Saia e entre de novo.';
+  if (/violates check constraint|23514/i.test(m))
+    return 'Algum campo tem valor inválido. Confira os dados e tente de novo.';
+  if (/duplicate key|23505/i.test(m))
+    return 'Já existe um item com esses dados.';
+  return 'Não deu certo: ' + m;
+}
+
+// Executa, e se falhar avisa o usuário em vez de morrer calado.
+async function tentar(rotulo, fn) {
+  try {
+    return { ok: true, valor: await fn() };
+  } catch (erro) {
+    console.error('[' + rotulo + ']', erro);
+    alert(traduzirFalha(erro));
+    return { ok: false, erro };
+  }
 }
 
 // ── Utilitários ───────────────────────────────────────────────────────────────
+
+// Nomes de cena e rótulos de regra são digitados pelo usuário e entram em
+// innerHTML. Sem escapar, uma cena chamada <img src=x onerror=...> quebra o
+// painel.
+function esc(texto) {
+  return String(texto ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
 
 function hexToHue(hex) {
   const r = parseInt(hex.slice(1, 3), 16) / 255;
@@ -858,22 +931,29 @@ api.onStateChanged(({ prefs, sim, status }) => {
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 async function init() {
-  const [prefs, user, scenes, sim, appState] = await Promise.all([
+  const [prefs, user, scenes, sim, appState, filterInfo] = await Promise.all([
     api.getPreferences(),
     api.getUser().catch(() => null),
-    api.getScenes().catch(() => []),
+    api.getScenes().catch(e => { console.error('[getScenes]', e); return { __falhou: e }; }),
     api.getSimState().catch(() => ({ active: false, type: 'protanopia' })),
-    api.getState()
+    api.getState(),
+    api.getFilterInfo().catch(() => ({}))
   ]);
 
-  state.prefs     = prefs;
-  state.user      = user;
-  state.scenes    = scenes;
-  state.sim       = sim;
-  state.status    = appState.status;
-  state.shortcuts = appState.shortcuts;
+  state.prefs      = prefs;
+  state.user       = user;
+  state.scenes     = Array.isArray(scenes) ? scenes : [];
+  if (scenes && scenes.__falhou) {
+    // Lista vazia por falha é indistinguível de "você não tem cenas". Avisar.
+    setTimeout(() => alert('Não foi possível carregar as suas cenas.\n\n' +
+                           traduzirFalha(scenes.__falhou)), 400);
+  }
+  state.sim        = sim;
+  state.status     = appState.status;
+  state.shortcuts  = appState.shortcuts;
+  state.filterInfo = filterInfo;
 
-  if (user?.name) userNameEl.textContent = user.name;
+  if (user?.name) userNameEl.textContent = user.name;  // textContent já escapa
 
   render();
 }

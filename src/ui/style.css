@@ -177,6 +177,17 @@ input:checked + .slider::before { transform: translate(21px, -50%); background: 
 .filter-btn .btn-label { font-size: 12px; font-weight: 600; display: block; }
 .filter-btn .btn-desc  { font-size: 10px; color: var(--text-muted); margin-top: 1px; display: block; line-height: 1.3; }
 
+/* Tipos sem correção possível por matriz linear (acromatopsia). Marcados como
+   indisponíveis em vez de aceitarem o clique e não fazerem nada. */
+.filter-btn-indisponivel {
+  opacity: .45;
+  cursor: not-allowed;
+}
+.filter-btn-indisponivel:hover {
+  border-color: var(--border);
+  background: transparent;
+}
+
 /* ── Opacity slider ──────────────────────────────────────────────────────────── */
 
 .slider-row { display: flex; align-items: center; gap: 12px; }
@@ -427,8 +438,10 @@ input[type=color] {
   white-space: nowrap;
 }
 .badge-filter { background: rgba(76,175,138,.15); color: var(--success); border: 1px solid rgba(76,175,138,.3); }
-.badge-sim    { background: rgba(108,99,255,.15); color: var(--accent-h); border: 1px solid rgba(108,99,255,.35); }
 .badge-off    { background: rgba(139,146,184,.08); color: var(--text-muted); border: 1px solid var(--border); }
+/* Simulação do modo Criador: estado distinto de "ativo", porque a tela está
+   sendo degradada de propósito, não corrigida. */
+.badge-sim { background: rgba(232,168,85,.15); color: #e8a855; border: 1px solid rgba(232,168,85,.35); }
 
 /* ── Footer ──────────────────────────────────────────────────────────────────── */
 

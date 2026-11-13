@@ -1,6 +1,6 @@
 {
   "name": "colorsense",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "description": "Ferramenta de acessibilidade visual para pessoas com daltonismo",
   "main": "main.js",
   "scripts": {
@@ -16,28 +16,51 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.108.1",
     "electron-store": "^8.2.0",
+    "electron-updater": "^6.8.9",
     "ws": "^8.21.0"
   },
   "build": {
     "appId": "com.colorsense.app",
     "productName": "ColorSense",
-    "extraResources": [
-      ".env"
-    ],
+    "win": {
+      "target": [
+        "portable",
+        "nsis"
+      ],
+      "icon": "assets/icons/icon.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/icons/icon.png"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "assets/icons/icon.png"
+    },
     "asarUnpack": [
       "src/native/**"
     ],
-    "win": {
-      "target": [
-        "nsis",
-        "portable"
-      ]
+    "files": [
+      "**/*",
+      "!dist",
+      "!docs",
+      "!site"
+    ],
+    "nsis": {
+      "artifactName": "ColorSense-Setup.${ext}"
     },
-    "mac": {
-      "target": "dmg"
+    "portable": {
+      "artifactName": "ColorSense-Portable.${ext}"
     },
-    "linux": {
-      "target": "AppImage"
-    }
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "MuriloJeronymo",
+        "repo": "Color-Sense"
+      }
+    ],
+    "extraResources": [
+      ".env"
+    ]
   }
 }
