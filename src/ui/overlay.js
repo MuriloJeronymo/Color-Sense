@@ -213,3 +213,15 @@ overlayAPI.onClear(() => {
   rules = [];
   stopCapture();
 });
+
+// ── Indicador de estado (M4) ──────────────────────────────────────────────────
+
+const statusEl = document.getElementById('status');
+
+overlayAPI.onStatus(({ visible, icon, text, bottom }) => {
+  statusEl.style.display = visible ? 'flex' : 'none';
+  if (!visible) return;
+  document.getElementById('status-icon').textContent = icon;
+  document.getElementById('status-text').textContent = text;
+  statusEl.style.bottom = (16 + (bottom || 0)) + 'px';
+});

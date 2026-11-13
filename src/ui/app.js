@@ -20,16 +20,54 @@ const PATTERNS = [
   { key: 'zigzag',     label: 'Zigzag'      }
 ];
 
+// Tipos com correção por filtro (acromatopsia não tem canal para redistribuir)
+const CORRECTABLE = ['protanopia', 'protanomalia', 'deuteranopia', 'deuteranomalia', 'tritanopia', 'tritanomalia'];
+
+// Pares de teste da calibração (M2): combinações que costumam se confundir em
+// cada eixo de deficiência. O filtro é aplicado sobre esta tela em tempo real.
+const CALIBRATION_PAIRS = {
+  redGreen: [
+    { a: '#d62728', b: '#2ca02c', label: 'Linhas de gráfico' },
+    { a: '#e05c7a', b: '#4caf8a', label: 'Erro e sucesso' },
+    { a: '#c0392b', b: '#7f8c2a', label: 'Falhou e aprovado' },
+    { a: '#8c564b', b: '#556b2f', label: 'Marrom e oliva' },
+    { a: '#ff7f0e', b: '#7fbf3f', label: 'Laranja e verde-claro' }
+  ],
+  blueYellow: [
+    { a: '#0072b2', b: '#009e73', label: 'Azul e verde' },
+    { a: '#f0e442', b: '#d9d9d9', label: 'Amarelo e cinza claro' },
+    { a: '#f0e442', b: '#cc79a7', label: 'Amarelo e rosa' },
+    { a: '#56b4e9', b: '#7fbf7f', label: 'Azul-claro e verde-claro' },
+    { a: '#6a3d9a', b: '#1f4e9a', label: 'Roxo e azul' }
+  ]
+};
+
+const VERDICTS = {
+  ok:      { icon: '✓', text: 'Distinguíveis' },
+  caution: { icon: '!', text: 'Atenção' },
+  hard:    { icon: '✗', text: 'Difíceis de distinguir' }
+};
+
 // ── Estado ────────────────────────────────────────────────────────────────────
 
 const state = {
   prefs: {},
   scenes: [],
   user: null,
-  view: 'filter',       // 'filter' | 'scenes' | 'creator' | 'edit'
+  view: 'filter',       // 'filter' | 'scenes' | 'creator' | 'edit' | 'calibrate'
   editingScene: null,
   editingRuleId: null,  // id da regra em edição (null = formulário de nova regra)
-  sim: { active: false, type: 'protanopia' }
+  sim: { active: false, type: 'protanopia' },
+  status: { mode: 'off', icon: '○', text: 'Desligado' },
+  shortcuts: [],
+  // Verificador de cores do modo Criador (M1)
+  checker: {
+    c1: { hex: '#d62728', name: '' },
+    c2: { hex: '#2ca02c', name: '' },
+    result: null
+  },
+  // Calibração do filtro (M2)
+  calib: { type: 'deuteranopia', intensity: 1, checked: [] }
 };
 
 // ── Refs fixos ────────────────────────────────────────────────────────────────
@@ -43,24 +81,27 @@ const globalToggle = document.getElementById('global-toggle');
 // ── Render principal ──────────────────────────────────────────────────────────
 
 function render() {
-  tabsEl.style.display = state.view === 'edit' ? 'none' : 'flex';
+  const subView = state.view === 'edit' || state.view === 'calibrate';
+  tabsEl.style.display = subView ? 'none' : 'flex';
   document.querySelectorAll('.tab').forEach(t =>
     t.classList.toggle('active', t.dataset.tab === state.view)
   );
 
-  if (state.view === 'filter')       renderFilter();
-  else if (state.view === 'scenes')  renderScenes();
-  else if (state.view === 'creator') renderCreator();
-  else if (state.view === 'edit')    renderEdit();
+  if (state.view === 'filter')         renderFilter();
+  else if (state.view === 'scenes')    renderScenes();
+  else if (state.view === 'creator')   renderCreator();
+  else if (state.view === 'edit')      renderEdit();
+  else if (state.view === 'calibrate') renderCalibrate();
 
   updateGlobalControls();
 }
 
+// Indicador de estado (M4): símbolo + texto, não só a cor do selo
 function updateGlobalControls() {
-  const on = state.prefs.filterActive;
-  globalToggle.checked    = on || false;
-  statusBadge.textContent = on ? 'Ativo' : 'Desativado';
-  statusBadge.className   = 'badge ' + (on ? 'badge-on' : 'badge-off');
+  globalToggle.checked    = state.prefs.filterActive || false;
+  statusBadge.textContent = `${state.status.icon} ${state.status.text}`;
+  statusBadge.title       = state.status.text;
+  statusBadge.className   = 'badge badge-' + state.status.mode;
 }
 
 // ── View: Filtro ──────────────────────────────────────────────────────────────
@@ -68,7 +109,7 @@ function updateGlobalControls() {
 function renderFilter() {
   const activeScene = state.scenes.find(s => s.id === state.prefs.activeSceneId);
   const filterLabel = FILTERS.find(f => f.key === state.prefs.filterType)?.label || 'Normal';
-  const opPct       = Math.round((state.prefs.opacity ?? 1) * 100);
+  const intPct      = Math.round((state.prefs.intensity ?? 1) * 100);
 
   contentEl.innerHTML = `
     ${activeScene ? `
@@ -90,9 +131,32 @@ function renderFilter() {
     <section class="card">
       <p class="section-title">Intensidade do Filtro</p>
       <div class="slider-row">
-        <input type="range" id="opacity-slider" min="0" max="100" value="${opPct}">
-        <span id="opacity-value">${opPct}%</span>
+        <input type="range" id="intensity-slider" min="0" max="200" step="5" value="${intPct}">
+        <span id="intensity-value" class="slider-value">${intPct}%</span>
       </div>
+      <p class="hint-text">100% é a correção padrão. Acima disso, a correção fica mais forte.</p>
+    </section>
+
+    <section class="card">
+      <div class="toggle-row">
+        <div>
+          <p class="label">Calibrar filtro</p>
+          <p class="sublabel">Ajuste o tipo e a intensidade com uma imagem de teste.</p>
+        </div>
+        <button class="btn-sm btn-primary" id="btn-calibrate">Calibrar</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <p class="section-title">Acesso rápido</p>
+      <ul class="shortcut-list">
+        ${state.shortcuts.map(s => `
+          <li>
+            <span class="kbd">${s.label}</span>
+            <span>${s.description}${s.ok ? '' : ' <em>(indisponível: atalho usado por outro programa)</em>'}</span>
+          </li>`).join('')}
+        <li><span class="kbd">Clique</span><span>no ícone da bandeja: liga/desliga o filtro</span></li>
+      </ul>
     </section>
   `;
 
@@ -110,13 +174,135 @@ function renderFilter() {
   });
 
   document.getElementById('btn-switch')?.addEventListener('click', () => switchTab('scenes'));
+  document.getElementById('btn-calibrate').addEventListener('click', openCalibration);
 
-  const slider  = document.getElementById('opacity-slider');
-  const opLabel = document.getElementById('opacity-value');
-  slider.addEventListener('input', () => { opLabel.textContent = slider.value + '%'; });
+  const slider   = document.getElementById('intensity-slider');
+  const intLabel = document.getElementById('intensity-value');
+  slider.addEventListener('input', () => { intLabel.textContent = slider.value + '%'; });
   slider.addEventListener('change', async () => {
-    state.prefs = await api.savePreferences({ opacity: slider.value / 100 });
+    state.prefs = await api.savePreferences({ intensity: slider.value / 100 });
   });
+}
+
+// ── View: Calibração do filtro (M2) ───────────────────────────────────────────
+
+function calibrationPairs() {
+  return state.calib.type.startsWith('trit') ? CALIBRATION_PAIRS.blueYellow : CALIBRATION_PAIRS.redGreen;
+}
+
+async function openCalibration() {
+  state.calib = {
+    type: CORRECTABLE.includes(state.prefs.filterType) ? state.prefs.filterType : 'deuteranopia',
+    intensity: state.prefs.intensity ?? 1,
+    checked: []
+  };
+  state.view = 'calibrate';
+  render();
+  await api.previewCalibration(state.calib.type, state.calib.intensity);
+}
+
+async function closeCalibration(save) {
+  state.prefs = await api.endCalibration(save);
+  state.view = 'filter';
+  render();
+}
+
+function renderCalibrate() {
+  const { type, intensity, checked } = state.calib;
+  const pairs  = calibrationPairs();
+  const pct    = Math.round(intensity * 100);
+  const nOk    = checked.length;
+  const allOk  = nOk === pairs.length;
+
+  contentEl.innerHTML = `
+    <div class="edit-header">
+      <button class="btn-back" id="btn-back">← Filtro</button>
+      <p class="edit-title">Calibrar filtro</p>
+    </div>
+
+    <p class="hint-text">
+      O filtro está sendo aplicado a esta tela em tempo real. Escolha o tipo e
+      ajuste a intensidade até conseguir distinguir as duas cores de cada par.
+    </p>
+
+    <section class="card">
+      <p class="section-title">1. Tipo de daltonismo</p>
+      <div class="filter-grid" id="calib-types"></div>
+    </section>
+
+    <section class="card">
+      <p class="section-title">2. Intensidade</p>
+      <div class="slider-row">
+        <input type="range" id="calib-intensity" min="0" max="200" step="5" value="${pct}">
+        <span id="calib-intensity-value" class="slider-value">${pct}%</span>
+      </div>
+    </section>
+
+    <section class="card">
+      <p class="section-title">3. Você distingue as cores de cada par?</p>
+      <div class="calib-pairs">
+        ${pairs.map((p, i) => `
+          <label class="calib-pair">
+            <span class="calib-swatches">
+              <span class="calib-swatch" style="background:${p.a}"></span>
+              <span class="calib-swatch" style="background:${p.b}"></span>
+            </span>
+            <span class="calib-pair-label">${i + 1}. ${p.label}</span>
+            <input type="checkbox" data-pair="${i}" ${checked.includes(i) ? 'checked' : ''}>
+            <span class="calib-check-text">Distingo</span>
+          </label>`).join('')}
+      </div>
+      <p class="calib-progress">
+        ${allOk ? '✓ ' : ''}${nOk} de ${pairs.length} pares distinguíveis
+      </p>
+      ${!allOk && pct >= 200 ? `
+        <p class="hint-text">Mesmo no máximo alguns pares continuam iguais? Experimente outro tipo,
+        por exemplo protan em vez de deutan.</p>` : ''}
+    </section>
+
+    <div class="form-actions">
+      <button class="btn-sm" id="btn-calib-cancel">Cancelar</button>
+      <button class="btn-sm btn-primary" id="btn-calib-save">Salvar calibração</button>
+    </div>
+  `;
+
+  const grid = document.getElementById('calib-types');
+  FILTERS.filter(f => CORRECTABLE.includes(f.key)).forEach(f => {
+    const btn = document.createElement('button');
+    btn.className = 'filter-btn' + (f.key === type ? ' active' : '');
+    btn.innerHTML = `<span class="btn-label">${f.label}</span><span class="btn-desc">${f.desc}</span>`;
+    btn.addEventListener('click', async () => {
+      state.calib.type = f.key;
+      state.calib.checked = [];   // novo tipo: o teste recomeça
+      renderCalibrate();
+      await api.previewCalibration(f.key, state.calib.intensity);
+    });
+    grid.appendChild(btn);
+  });
+
+  const slider = document.getElementById('calib-intensity');
+  let previewTimer = null;
+  slider.addEventListener('input', () => {
+    state.calib.intensity = slider.value / 100;
+    document.getElementById('calib-intensity-value').textContent = slider.value + '%';
+    clearTimeout(previewTimer);
+    previewTimer = setTimeout(() => api.previewCalibration(state.calib.type, state.calib.intensity), 60);
+  });
+  slider.addEventListener('change', () => renderCalibrate());
+
+  contentEl.querySelectorAll('[data-pair]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const i = Number(cb.dataset.pair);
+      state.calib.checked = cb.checked
+        ? [...state.calib.checked, i]
+        : state.calib.checked.filter(n => n !== i);
+      renderCalibrate();
+    });
+  });
+
+  document.getElementById('btn-back').addEventListener('click', () => closeCalibration(false));
+  document.getElementById('btn-calib-cancel').addEventListener('click', () => closeCalibration(false));
+  document.getElementById('btn-calib-save').addEventListener('click', () => closeCalibration(true));
 }
 
 // ── View: Cenas ───────────────────────────────────────────────────────────────
@@ -228,6 +414,20 @@ function renderCreator() {
       A simulação afeta toda a tela e tem prioridade sobre o filtro de correção.
       Os padrões visuais ficam ocultos enquanto ela está ativa.
     </p>
+
+    <section class="card">
+      <p class="section-title">Verificador de cores</p>
+      <p class="sublabel">
+        Capture duas cores da tela (texto e fundo, ou duas séries de um gráfico)
+        para conferir o contraste mínimo da WCAG e se elas continuam
+        distinguíveis para cada tipo de daltonismo.
+      </p>
+      <div class="checker-colors">
+        ${checkerSlotHTML('c1', 'Cor 1 · texto ou elemento')}
+        ${checkerSlotHTML('c2', 'Cor 2 · fundo ou outro elemento')}
+      </div>
+      <div id="checker-result">${checkerResultHTML()}</div>
+    </section>
   `;
 
   const grid = document.getElementById('sim-grid');
@@ -247,6 +447,115 @@ function renderCreator() {
     state.sim = await api.toggleSim(e.target.checked);
     renderCreator();
   });
+
+  bindCheckerEvents();
+  if (!state.checker.result) updateChecker();
+}
+
+// ── Verificador de cores (M1) ─────────────────────────────────────────────────
+
+function checkerSlotHTML(slot, title) {
+  const c = state.checker[slot];
+  return `
+    <div class="checker-slot">
+      <p class="checker-slot-title">${title}</p>
+      <div class="color-input-row">
+        <input type="color" id="${slot}-color" value="${c.hex}">
+        <span class="checker-hex">${c.hex}</span>
+      </div>
+      <p class="color-name">${c.name ? '≈ ' + c.name : ''}</p>
+      <button class="btn-sm btn-pick" id="${slot}-pick">⌖ Capturar da tela</button>
+    </div>
+  `;
+}
+
+const fmt = (n, digits = 2) => n.toFixed(digits).replace('.', ',');
+
+function passFailHTML(passes, label) {
+  return `
+    <div class="check-row ${passes ? 'check-pass' : 'check-fail'}">
+      <span class="check-icon">${passes ? '✓' : '✗'}</span>
+      <span class="check-verdict">${passes ? 'Aprovado' : 'Reprovado'}</span>
+      <span class="check-label">${label}</span>
+    </div>
+  `;
+}
+
+function checkerResultHTML() {
+  const r = state.checker.result;
+  if (!r) return '';
+
+  return `
+    <div class="checker-contrast">
+      <span class="sublabel">Razão de contraste</span>
+      <span class="checker-ratio">${fmt(r.contrast)}:1</span>
+    </div>
+    ${passFailHTML(r.passesText, 'Texto normal (mín. 4,5:1 · WCAG 1.4.3)')}
+    ${passFailHTML(r.passesGraphic, 'Texto grande e elementos gráficos (mín. 3:1 · WCAG 1.4.11)')}
+    ${r.suggestion ? `
+      <div class="checker-suggestion">
+        <span class="rule-swatch" style="background:${r.suggestion}"></span>
+        <span>Para atingir 4,5:1, troque a cor 1 por <b>${r.suggestion}</b></span>
+        <button class="btn-sm" id="btn-use-suggestion">Usar</button>
+      </div>` : ''}
+
+    <p class="section-title" style="margin-top:12px">Por tipo de daltonismo</p>
+    <div class="cvd-list">
+      ${r.types.map(t => {
+        const v = VERDICTS[t.verdict];
+        const label = FILTERS.find(f => f.key === t.type)?.label || t.type;
+        return `
+          <div class="cvd-row cvd-${t.verdict}">
+            <span class="cvd-label">${label}</span>
+            <span class="cvd-swatches">
+              <span class="rule-swatch" style="background:${t.sim1}"></span>
+              <span class="rule-swatch" style="background:${t.sim2}"></span>
+            </span>
+            <span class="cvd-verdict"><span class="check-icon">${v.icon}</span> ${v.text}</span>
+            <span class="cvd-delta">ΔE ${fmt(t.deltaE, 1)}</span>
+          </div>`;
+      }).join('')}
+    </div>
+    <p class="hint-text">
+      ΔE (CIEDE2000) entre as duas cores como cada pessoa as veria:
+      abaixo de 10, difíceis de distinguir; de 10 a 20, distinguíveis com atenção.
+      Quando o par não é distinguível, acrescente texto, ícone ou padrão (WCAG 1.4.1).
+    </p>
+  `;
+}
+
+async function updateChecker() {
+  const { c1, c2 } = state.checker;
+  const [result, n1, n2] = await Promise.all([
+    api.analyzeColors(c1.hex, c2.hex),
+    api.colorName(c1.hex),
+    api.colorName(c2.hex)
+  ]);
+  state.checker.result = result;
+  c1.name = n1;
+  c2.name = n2;
+  if (state.view === 'creator') renderCreator();
+}
+
+async function setCheckerColor(slot, hex) {
+  state.checker[slot].hex = hex;
+  await updateChecker();
+}
+
+function bindCheckerEvents() {
+  ['c1', 'c2'].forEach(slot => {
+    document.getElementById(`${slot}-color`).addEventListener('change', (e) =>
+      setCheckerColor(slot, e.target.value)
+    );
+    document.getElementById(`${slot}-pick`).addEventListener('click', async () => {
+      const picked = await api.pickColor();
+      if (picked) setCheckerColor(slot, picked.hex);
+    });
+  });
+
+  document.getElementById('btn-use-suggestion')?.addEventListener('click', () =>
+    setCheckerColor('c1', state.checker.result.suggestion)
+  );
 }
 
 // ── View: Editar cena ─────────────────────────────────────────────────────────
@@ -360,25 +669,26 @@ function ruleFormHTML(r) {
 
   return `
     <div class="add-rule-form">
-      <div class="field-row">
-        <div class="field">
-          <label>Cor alvo</label>
-          <div class="color-input-row">
-            <input type="color" id="r-color" value="${hex}">
-            <input type="text"  id="r-hex" class="input input-sm" value="${hex}" maxlength="7">
-          </div>
-        </div>
-        <div class="field">
-          <label>Padrão visual</label>
-          <select id="r-pattern" class="input">
-            ${PATTERNS.map(p =>
-              `<option value="${p.key}" ${p.key === r?.pattern ? 'selected' : ''}>${p.label}</option>`
-            ).join('')}
-          </select>
+      <div class="field">
+        <label>Cor alvo</label>
+        <button class="btn-sm btn-primary btn-pick" id="r-pick">⌖ Capturar cor da tela</button>
+        <p class="hint-text">Clique no elemento da tela que tem a cor. Não é preciso saber o código.</p>
+        <div class="color-input-row">
+          <input type="color" id="r-color" value="${hex}">
+          <input type="text"  id="r-hex" class="input input-sm" value="${hex}" maxlength="7">
+          <span class="color-name" id="r-name"></span>
         </div>
       </div>
       <div class="field">
-        <label>Rótulo (opcional)</label>
+        <label>Padrão visual</label>
+        <select id="r-pattern" class="input">
+          ${PATTERNS.map(p =>
+            `<option value="${p.key}" ${p.key === r?.pattern ? 'selected' : ''}>${p.label}</option>`
+          ).join('')}
+        </select>
+      </div>
+      <div class="field">
+        <label>Rótulo (opcional; se vazio, usa o nome da cor)</label>
         <input type="text" id="r-label" class="input"
           placeholder="Ex: Vermelho de alerta, Botões de erro..."
           value="${r?.label && r.label !== r?.color_hex ? r.label : ''}">
@@ -402,12 +712,32 @@ function ruleFormHTML(r) {
 function bindRuleFormEvents() {
   const colorPicker = document.getElementById('r-color');
   const hexInput    = document.getElementById('r-hex');
+  const nameEl      = document.getElementById('r-name');
+
+  // Nome aproximado da cor em texto (M3): quem não vê a cor sabe qual capturou
+  const showName = async (hex) => {
+    const name = await api.colorName(hex);
+    nameEl.textContent = name ? '≈ ' + name : '';
+    nameEl.dataset.name = name || '';
+  };
+  const setColor = (hex) => {
+    colorPicker.value = hex;
+    hexInput.value = hex;
+    showName(hex);
+  };
+
+  showName(colorPicker.value);
 
   colorPicker.addEventListener('input', (e) => { hexInput.value = e.target.value; });
+  colorPicker.addEventListener('change', (e) => showName(e.target.value));
 
   hexInput.addEventListener('change', (e) => {
-    if (/^#[0-9a-f]{6}$/i.test(e.target.value))
-      colorPicker.value = e.target.value;
+    if (/^#[0-9a-f]{6}$/i.test(e.target.value)) setColor(e.target.value.toLowerCase());
+  });
+
+  document.getElementById('r-pick').addEventListener('click', async () => {
+    const picked = await api.pickColor();
+    if (picked) setColor(picked.hex);
   });
 
   document.getElementById('r-tolerance').addEventListener('input', (e) => {
@@ -456,7 +786,9 @@ async function submitRule() {
     hueCenter:    hexToHue(hex),
     hueTolerance: parseInt(document.getElementById('r-tolerance').value),
     pattern:      document.getElementById('r-pattern').value,
-    label:        document.getElementById('r-label').value.trim() || hex,
+    label:        document.getElementById('r-label').value.trim()
+                    || document.getElementById('r-name').dataset.name
+                    || hex,
     opacity:      parseFloat(document.getElementById('r-opacity').value)
   };
 
@@ -513,27 +845,33 @@ globalToggle.addEventListener('change', async () => {
 
 document.getElementById('btn-logout').addEventListener('click', () => api.signOut());
 
-api.onApplyFilter(({ type, active }) => {
-  state.prefs.filterType   = type;
-  state.prefs.filterActive = active;
-  updateGlobalControls();
-  if (state.view === 'filter') renderFilter();
+// Mudanças vindas da bandeja, dos atalhos ou do próprio painel (M4/M5).
+// Telas com formulário (edição, calibração) só atualizam o rodapé.
+api.onStateChanged(({ prefs, sim, status }) => {
+  state.prefs  = prefs;
+  state.sim    = sim;
+  state.status = status;
+  if (['filter', 'scenes', 'creator'].includes(state.view)) render();
+  else updateGlobalControls();
 });
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 async function init() {
-  const [prefs, user, scenes, sim] = await Promise.all([
+  const [prefs, user, scenes, sim, appState] = await Promise.all([
     api.getPreferences(),
     api.getUser().catch(() => null),
     api.getScenes().catch(() => []),
-    api.getSimState().catch(() => ({ active: false, type: 'protanopia' }))
+    api.getSimState().catch(() => ({ active: false, type: 'protanopia' })),
+    api.getState()
   ]);
 
-  state.prefs  = prefs;
-  state.user   = user;
-  state.scenes = scenes;
-  state.sim    = sim;
+  state.prefs     = prefs;
+  state.user      = user;
+  state.scenes    = scenes;
+  state.sim       = sim;
+  state.status    = appState.status;
+  state.shortcuts = appState.shortcuts;
 
   if (user?.name) userNameEl.textContent = user.name;
 

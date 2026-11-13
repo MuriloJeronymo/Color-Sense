@@ -6,8 +6,19 @@ contextBridge.exposeInMainWorld('colorSenseAPI', {
   savePreferences: (prefs)  => ipcRenderer.invoke('save-preferences', prefs),
   toggleOverlay:   (enabled)=> ipcRenderer.invoke('toggle-overlay', enabled),
   setFilterType:   (type)   => ipcRenderer.invoke('set-filter-type', type),
-  onApplyFilter:   (cb)     => ipcRenderer.on('apply-filter', (_, data) => cb(data)),
-  removeApplyFilter: ()     => ipcRenderer.removeAllListeners('apply-filter'),
+
+  // Estado atual (M4) e atalhos (M5); o main avisa a cada mudança
+  getState:       ()   => ipcRenderer.invoke('state:get'),
+  onStateChanged: (cb) => ipcRenderer.on('state-changed', (_, data) => cb(data)),
+
+  // Calibração do filtro (M2)
+  previewCalibration: (type, intensity) => ipcRenderer.invoke('calibration:preview', type, intensity),
+  endCalibration:     (save)            => ipcRenderer.invoke('calibration:end', save),
+
+  // Conta-gotas e verificador de cores (M1 e M3)
+  pickColor:    ()           => ipcRenderer.invoke('color:pick'),
+  colorName:    (hex)        => ipcRenderer.invoke('color:name', hex),
+  analyzeColors:(hex1, hex2) => ipcRenderer.invoke('checker:analyze', hex1, hex2),
 
   // Auth
   signUp:     (data)  => ipcRenderer.invoke('auth:sign-up', data),

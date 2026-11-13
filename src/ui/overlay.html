@@ -6,10 +6,25 @@
     * { margin: 0; padding: 0; }
     html, body { background: transparent; overflow: hidden; width: 100vw; height: 100vh; }
     canvas { position: fixed; top: 0; left: 0; pointer-events: none; }
+
+    /* Indicador de estado (M4): só cinza e branco, para não disparar as regras
+       de padrão (o overlay analisa a própria tela) e não depender de cor —
+       o estado é dado pelo símbolo e pelo texto. */
+    #status {
+      position: fixed; right: 16px; bottom: 16px;
+      display: none; align-items: center; gap: 8px;
+      background: rgba(24, 24, 24, .85); color: #fff;
+      border: 1px solid rgba(255, 255, 255, .4); border-radius: 999px;
+      padding: 6px 14px 6px 10px;
+      font: 600 12px -apple-system, 'Segoe UI', sans-serif;
+      pointer-events: none;
+    }
+    #status-icon { font-size: 15px; line-height: 1; }
   </style>
 </head>
 <body>
   <canvas id="canvas"></canvas>
+  <div id="status"><span id="status-icon"></span><span id="status-text"></span></div>
   <script src="overlay.js"></script>
 </body>
 </html>

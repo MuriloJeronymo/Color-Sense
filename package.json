@@ -21,17 +21,23 @@
   "build": {
     "appId": "com.colorsense.app",
     "productName": "ColorSense",
+    "extraResources": [
+      ".env"
+    ],
+    "asarUnpack": [
+      "src/native/**"
+    ],
     "win": {
-      "target": "nsis",
-      "icon": "assets/icons/icon.ico"
+      "target": [
+        "nsis",
+        "portable"
+      ]
     },
     "mac": {
-      "target": "dmg",
-      "icon": "assets/icons/icon.icns"
+      "target": "dmg"
     },
     "linux": {
-      "target": "AppImage",
-      "icon": "assets/icons/icon.png"
+      "target": "AppImage"
     }
   }
 }
