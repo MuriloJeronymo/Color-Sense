@@ -135,4 +135,16 @@ for (const key of Object.keys(SIMULATION_3X3)) {
   };
 }
 
-module.exports = { SIMULATION_MATRICES, CORRECTION_MATRICES };
+// ── Intensidade da correção (calibração do filtro) ────────────────────────────
+// M = I + k · (D − I): k = 0 desliga a correção, k = 1 é a daltonização padrão
+// e k > 1 a exagera, para quem não percebe ganho com o filtro padrão.
+
+function getCorrectionMatrix(type, intensity = 1) {
+  const S = SIMULATION_3X3[type];
+  const C = SHIFT_BY_TYPE[type];
+  if (!S || !C) return to20(I3);
+  const D = daltonize(S, C);
+  return to20(matCombine(I3, D, (i, d) => i + intensity * (d - i)));
+}
+
+module.exports = { SIMULATION_MATRICES, CORRECTION_MATRICES, getCorrectionMatrix };

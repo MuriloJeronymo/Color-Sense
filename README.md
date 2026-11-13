@@ -31,6 +31,11 @@ A ferramenta atende a **dois públicos**:
 | 🟦 **Padrões visuais** | Sobrepõe texturas (listras, pontos, hachuras) sobre regiões de uma cor específica, tornando-a identificável pela *forma*. |
 | 🗂️ **Cenas** | Perfis de configuração salvos na nuvem, ativáveis conforme a tarefa. |
 | 🔐 **Conta de usuário** | Cadastro/login com persistência de preferências e cenas. |
+| 🧪 **Verificador de cores** | No modo Criador: razão de contraste WCAG (4,5:1 e 3:1) e se duas cores continuam distinguíveis para cada tipo de daltonismo (ΔE CIEDE2000). |
+| 🎯 **Calibração do filtro** | Ajuste guiado do tipo e da intensidade do filtro com pares de cores de teste. |
+| ⌖ **Conta-gotas** | Captura uma cor clicando na tela, com o nome aproximado da cor (regras de cena e verificador). |
+| ◐ **Indicador de estado** | Símbolo e texto sempre visíveis no canto da tela, no painel e na bandeja (Desligado, Filtro ligado, Simulando). |
+| ⌨️ **Acesso rápido** | Ctrl+Alt+F (filtro), Ctrl+Alt+P (padrões), Ctrl+Alt+S (simulação) e clique no ícone da bandeja. |
 
 **Tipos de daltonismo suportados:** Protanopia, Protanomalia, Deuteranopia, Deuteranomalia, Tritanopia, Tritanomalia, Acromatopsia e Acromatomalia.
 
@@ -92,7 +97,9 @@ ColorSense/
 └── src/
     ├── algorithms/
     │   ├── colorFilters.js     # Matrizes de simulação e correção (daltonização)
-    │   └── contrastChecker.js  # Verificação de contraste WCAG
+    │   ├── contrastChecker.js  # Verificação de contraste WCAG
+    │   ├── colorChecker.js     # Verificador de cores (contraste + ΔE por tipo de daltonismo)
+    │   └── colorNames.js       # Nome aproximado das cores em português
     ├── native/
     │   └── colorDaemon.ps1     # Daemon PowerShell (Magnification API)
     ├── store/
@@ -100,11 +107,13 @@ ColorSense/
     │   ├── auth.js             # Autenticação
     │   ├── sceneStore.js       # CRUD de cenas e regras
     │   └── preferences.js      # Preferências locais (electron-store)
-    └── ui/
-        ├── index.html / app.js / style.css   # Painel principal
-        ├── auth/                              # Tela de login
-        ├── overlay.html / overlay.js          # Overlay de padrões visuais
-        └── overlay-preload.js                 # Ponte do overlay
+    ├── ui/
+    │   ├── index.html / app.js / style.css   # Painel principal
+    │   ├── auth/                              # Tela de login
+    │   ├── overlay.html / overlay.js          # Overlay de padrões visuais
+    │   └── overlay-preload.js                 # Ponte do overlay
+    ├── picker/                  # Conta-gotas (captura de cor na tela)
+    └── tray/trayIcons.js        # Ícones da bandeja por estado
 ```
 
 ---
@@ -153,7 +162,7 @@ O app abrirá com a tela de login. Após autenticar, o painel principal aparece 
 
 - **Apenas Windows.** O filtro de tela inteira usa a Windows Magnification API, que não existe em macOS/Linux. Embora o `package.json` tenha alvos de build para os três sistemas, **só o Windows é funcional**.
 - **Correção por matriz linear.** Recupera a distinção de cores redistribuindo informação, mas não "cria" o que foi perdido. Casos de acromatopsia (ausência total de cor) não têm correção por esse método.
-- **Verificador de contraste** ([contrastChecker.js](src/algorithms/contrastChecker.js)) está implementado mas ainda não integrado à interface — base para um recurso futuro.
+- **Ajustes da Sprint 3** (verificador de cores, calibração, conta-gotas, indicador de estado e acesso rápido) foram verificados apenas por testes funcionais da equipe, sem nova rodada com usuários (Seção 6.9.3).
 
 ---
 

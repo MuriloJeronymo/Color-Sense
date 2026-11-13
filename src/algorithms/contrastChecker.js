@@ -105,5 +105,6 @@ module.exports = {
   checkWcagAA,
   checkWcagAAA,
   getContrastLevel,
-  suggestAccessibleColor
+  suggestAccessibleColor,
+  rgbToHsl
 };
