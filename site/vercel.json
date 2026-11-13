@@ -1,0 +1,35 @@
+{
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        }
+      ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/baixar",
+      "destination": "https://github.com/enzoelle123/Color-Sense/releases/latest/download/ColorSense-Setup.exe",
+      "permanent": false
+    },
+    {
+      "source": "/portatil",
+      "destination": "https://github.com/enzoelle123/Color-Sense/releases/latest/download/ColorSense-Portable.exe",
+      "permanent": false
+    },
+    {
+      "source": "/pesquisa",
+      "destination": "https://docs.google.com/forms/d/e/1FAIpQLScmKnil4-4K82SsI9SeEUvrM9ybrLkbMh_9lD0zDUflX08EIA/viewform",
+      "permanent": false
+    }
+  ],
+  "cleanUrls": true
+}

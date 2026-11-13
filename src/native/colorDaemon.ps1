@@ -1,4 +1,4 @@
-param()
+param([int]$ParentPid = 0)
 
 # Ensure UTF-8 I/O (Node.js sends UTF-8 over the pipe)
 [Console]::InputEncoding  = [System.Text.Encoding]::UTF8
@@ -50,7 +50,33 @@ function Set-Identity {
     [MagHelper]::MagSetFullscreenColorEffect([ref]$e) | Out-Null
 }
 
-while ($true) {
+# Vigia do processo pai.
+#
+# Este daemon segura um efeito de cor que vale para a TELA INTEIRA. Se ele
+# sobreviver ao aplicativo, a tela fica presa no filtro e nao ha janela nenhuma
+# para desligar — so reiniciando o computador. Normalmente o fim do pai fecha o
+# pipe e o ReadLine devolve $null, mas isso depende de ninguem mais segurar a
+# ponta de escrita do pipe. O vigia abaixo nao depende de nada disso: espera o
+# pai morrer numa thread propria e derruba o processo. Morrer ja devolve a tela
+# ao normal, porque o efeito pertence a este processo.
+if ($ParentPid -gt 0) {
+    try {
+        $pai = [System.Diagnostics.Process]::GetProcessById($ParentPid)
+        $rs = [RunspaceFactory]::CreateRunspace()
+        $rs.Open()
+        $rs.SessionStateProxy.SetVariable('pai', $pai)
+        $vigia = [PowerShell]::Create()
+        $vigia.Runspace = $rs
+        $vigia.AddScript({ $pai.WaitForExit(); [Environment]::Exit(0) }) | Out-Null
+        $vigia.BeginInvoke() | Out-Null
+    } catch {
+        # Pai ja morreu entre o spawn e aqui: nao ha o que fazer aqui dentro.
+        [Environment]::Exit(0)
+    }
+}
+
+$rodando = $true
+while ($rodando) {
     $line = [Console]::In.ReadLine()
     if ($null -eq $line) { break }
     $line = $line.Trim()
@@ -90,7 +116,9 @@ while ($true) {
                 [Console]::Out.Flush()
             }
             "exit" {
-                break
+                # $rodando em vez de break: em PowerShell o break dentro de um
+                # switch sai so do switch, e o while continuava para sempre.
+                $rodando = $false
             }
         }
     } catch {
@@ -99,5 +127,12 @@ while ($true) {
     }
 }
 
+# Fora do laco por qualquer motivo: devolve a tela ao normal.
 Set-Identity
 [MagHelper]::MagUninitialize() | Out-Null
+
+# Saida explicita: a thread do vigia fica parada em WaitForExit() e nao e uma
+# thread de segundo plano, entao o processo continuaria vivo depois do fim do
+# script. Isto era justamente o que se queria evitar.
+[Console]::Out.Flush()
+[Environment]::Exit(0)

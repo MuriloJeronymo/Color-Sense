@@ -13,8 +13,15 @@ let rules     = [];
 let video     = null;
 let loopTimer = null;
 
-const screenW = window.screen.width;
-const screenH = window.screen.height;
+// Dimensões do MONITOR, não da janela: a janela é limitada à área de trabalho
+// e fica menor que a tela, mas a captura vem no tamanho cheio. Começam com um
+// palpite e o processo principal corrige em onDisplay, antes de qualquer
+// captura começar.
+let screenW = window.screen.width;
+let screenH = window.screen.height;
+
+// Preenchido pelo processo principal; identifica o monitor a capturar.
+let displayId = null;
 canvas.width  = screenW;
 canvas.height = screenH;
 
@@ -23,8 +30,17 @@ const capCanvas  = new OffscreenCanvas(CAP_W, CAP_H);
 const capCtx     = capCanvas.getContext('2d', { willReadFrequently: true });
 let   maskCanvas = null;   // máscara na resolução de captura
 let   maskCtx    = null;
-const workCanvas = new OffscreenCanvas(screenW, screenH);
-const workCtx    = workCanvas.getContext('2d');
+let workCanvas = new OffscreenCanvas(screenW, screenH);
+let workCtx    = workCanvas.getContext('2d');
+
+// Redimensiona tudo quando o processo principal informa o monitor de verdade.
+function ajustarDimensoes(w, h) {
+  if (w === screenW && h === screenH && canvas.width === w) return;
+  screenW = w; screenH = h;
+  canvas.width = w; canvas.height = h;
+  workCanvas = new OffscreenCanvas(w, h);
+  workCtx = workCanvas.getContext('2d');
+}
 
 // ── Tiles de padrão ───────────────────────────────────────────────────────────
 // Cada padrão vira um tile pequeno repetido via createPattern — muito mais
@@ -85,8 +101,24 @@ function getPatternTile(type) {
 // Uma única passada calcula o matiz de cada pixel e preenche a máscara de
 // cada regra (alpha 255 onde a cor bate).
 
+// Os buffers de máscara são reaproveitados entre quadros. Alocar
+// nPixels x nRegras a cada 500 ms gerava cerca de 2 MB por regra por quadro, e
+// a pressão de GC num processo que fica ligado o dia inteiro é real.
+let masksCache = [];
+let masksTam = 0;
+
+function obterMasks(nPixels) {
+  if (masksTam !== nPixels || masksCache.length !== rules.length) {
+    masksCache = rules.map(() => new Uint32Array(nPixels));
+    masksTam = nPixels;
+  } else {
+    for (const m of masksCache) m.fill(0);
+  }
+  return masksCache;
+}
+
 function buildMasks(data, nPixels) {
-  const masks = rules.map(() => new Uint32Array(nPixels)); // 0 ou 0xFF000000 (ABGR)
+  const masks = obterMasks(nPixels);   // 0 ou 0xFF000000 (ABGR)
 
   for (let p = 0, i = 0; p < nPixels; p++, i += 4) {
     const r = data[i], g = data[i + 1], b = data[i + 2];
@@ -159,7 +191,7 @@ function analyze() {
 async function startCapture() {
   if (video) return;
 
-  const sourceId = await overlayAPI.getSource();
+  const sourceId = await overlayAPI.getSource(displayId);
   if (!sourceId) { console.error('[Overlay] nenhuma fonte de captura'); return; }
 
   const stream = await navigator.mediaDevices.getUserMedia({
@@ -203,6 +235,12 @@ async function syncState() {
 }
 
 // ── IPC ───────────────────────────────────────────────────────────────────────
+
+overlayAPI.onDisplay((info) => {
+  if (!info) return;
+  displayId = info.id;
+  if (info.width && info.height) ajustarDimensoes(info.width, info.height);
+});
 
 overlayAPI.onRules((newRules) => {
   rules = newRules || [];

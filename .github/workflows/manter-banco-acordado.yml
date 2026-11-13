@@ -1,0 +1,73 @@
+# Mantém o projeto Supabase do plano gratuito acordado.
+#
+# POR QUE ISSO EXISTE
+#   O plano gratuito do Supabase pausa um projeto depois de 7 dias sem
+#   atividade. Pausado, o endereço some do DNS e o aplicativo publicado para de
+#   deixar entrar e criar conta — foi o que aconteceu em outubro de 2026, no
+#   meio da coleta do estudo. A própria documentação do Supabase manda "gerar
+#   atividade suficiente fazendo chamadas de API" para evitar a pausa, então
+#   isto aqui é o caminho recomendado, não uma gambiarra.
+#   https://supabase.com/docs/guides/platform/free-project-pausing
+#
+# ONDE PRECISA ESTAR
+#   O GitHub só roda tarefas agendadas que estejam no branch padrão (main).
+#   Uma cópia deste arquivo em outro branch não faz nada sozinha.
+#
+# SEGREDOS (Settings > Secrets and variables > Actions)
+#   SUPABASE_URL  = o Project URL (ex.: https://abcdefgh.supabase.co)
+#   SUPABASE_KEY  = a chave publishable / anon (a mesma que vai no .env)
+#   Não use a service_role aqui: ela ignora o RLS.
+#
+# O QUE ELE FAZ
+#   Todo dia faz uma consulta mínima na tabela users. Sem sessão o RLS devolve
+#   uma lista vazia — e tudo bem: o que importa é o banco receber a chamada.
+#   Se o projeto estiver fora do ar, a tarefa falha e o GitHub avisa por e-mail,
+#   em vez de você descobrir por um participante.
+#
+#   O GitHub também desliga tarefas agendadas de repositórios públicos depois de
+#   60 dias sem commit. O segundo passo reativa esta tarefa a cada execução, para
+#   ela não morrer sozinha justamente quando o projeto estiver parado.
+
+name: Manter o banco acordado
+
+on:
+  schedule:
+    - cron: '17 12 * * *'   # todo dia, 12h17 UTC (9h17 em Brasília)
+  workflow_dispatch:         # dá para rodar na mão pelo botão "Run workflow"
+
+permissions:
+  actions: write             # só para o passo que reativa esta própria tarefa
+  contents: read
+
+jobs:
+  acordar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Consultar o banco
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_KEY" ]; then
+            echo "::error::Faltam os segredos SUPABASE_URL e SUPABASE_KEY no repositório."
+            exit 1
+          fi
+          # "|| true": se o endereço nem resolver (projeto pausado), o curl sai
+          # com erro e, sem isto, o passo morria antes de explicar o motivo.
+          codigo=$(curl -sS -o resposta.txt -w '%{http_code}' --max-time 30 \
+            "$SUPABASE_URL/rest/v1/users?select=id&limit=1" \
+            -H "apikey: $SUPABASE_KEY" -H "Authorization: Bearer $SUPABASE_KEY") || true
+          echo "HTTP $codigo"
+          head -c 300 resposta.txt 2>/dev/null; echo
+          # 200 = respondeu (lista vazia por causa do RLS, como esperado)
+          if [ "$codigo" != "200" ]; then
+            echo "::error::O banco não respondeu (HTTP $codigo). Provavelmente o projeto foi pausado: restaure em supabase.com/dashboard."
+            exit 1
+          fi
+          echo "Banco acordado."
+
+      - name: Manter esta tarefa ligada
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/manter-banco-acordado.yml/enable" || true

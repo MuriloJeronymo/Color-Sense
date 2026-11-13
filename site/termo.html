@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Termo de Consentimento Livre e Esclarecido do estudo ColorSense, TCC de Engenharia de Software da PUCPR.">
+<meta name="robots" content="noindex">
+<title>Termo de Consentimento · ColorSense</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%276%27 fill=%27%232C3AA8%27/%3E%3Ccircle cx=%279%27 cy=%2716%27 r=%274%27 fill=%27%23fff%27/%3E%3Ccircle cx=%2716%27 cy=%2716%27 r=%274%27 fill=%27%23fff%27 opacity=%27.68%27/%3E%3Ccircle cx=%2723%27 cy=%2716%27 r=%274%27 fill=%27%23fff%27 opacity=%27.4%27/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@600&display=swap">
+<style>
+  :root {
+    --ground:#F5F6F9; --surface:#FFFFFF; --sunk:#EBEDF3;
+    --ink:#12151C; --ink-soft:#3E4453; --muted:#6B7183;
+    --rule:#D6DAE4; --rule-soft:#E7EAF1;
+    /* Azul de propósito: é o canal que protanopia e deuteranopia preservam,
+       e quem lê esta página tem daltonismo. */
+    --marca:#2C3AA8; --marca-fundo:#26318C; --marca-clara:#7C8AF0;
+    --accent-ink:#2A38A6; --accent-soft:#E6E9FD;
+    --atencao:#8A5000; --atencao-soft:#FCF0DC; --atencao-borda:#D9A15A;
+    --f-display:"IBM Plex Serif",Georgia,serif;
+    --f-body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+    --f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0E1116; --surface:#171B23; --sunk:#1F242E;
+      --ink:#E8EAF1; --ink-soft:#B6BCCA; --muted:#8E95A6;
+      --rule:#2C323E; --rule-soft:#232935;
+      --marca:#1B2440; --marca-fundo:#141C33; --marca-clara:#9AA6FF;
+      --accent-ink:#B4BFFF; --accent-soft:#1F2542;
+      --atencao:#E5AC61; --atencao-soft:#33280F; --atencao-borda:#7A5B22;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0E1116; --surface:#171B23; --sunk:#1F242E;
+    --ink:#E8EAF1; --ink-soft:#B6BCCA; --muted:#8E95A6;
+    --rule:#2C323E; --rule-soft:#232935;
+    --marca:#1B2440; --marca-fundo:#141C33; --marca-clara:#9AA6FF;
+    --accent-ink:#B4BFFF; --accent-soft:#1F2542;
+    --atencao:#E5AC61; --atencao-soft:#33280F; --atencao-borda:#7A5B22;
+  }
+
+  * { box-sizing:border-box; }
+  body {
+    background:var(--ground); color:var(--ink);
+    font-family:var(--f-body); font-size:17px; line-height:1.65;
+    margin:0; -webkit-font-smoothing:antialiased;
+  }
+  .container { max-width:1060px; margin:0 auto; padding:0 24px; }
+  .estreito { max-width:720px; margin:0 auto; padding:0 24px; }
+
+  /* ── Navegação ─────────────────────────────────────────── */
+  nav {
+    background:var(--marca); position:sticky; top:0; z-index:20;
+  }
+  nav .container {
+    display:flex; align-items:center; justify-content:space-between;
+    gap:20px; padding-top:16px; padding-bottom:16px; flex-wrap:wrap;
+  }
+  .logo { display:flex; align-items:center; gap:11px; }
+  .logo-pontos { display:flex; gap:4px; }
+  .logo-pontos i {
+    width:9px; height:9px; border-radius:50%; display:block;
+    /* três pontos com formas de brilho diferentes, não só matizes diferentes */
+    background:#fff;
+  }
+  .logo-pontos i:nth-child(2) { opacity:.68; }
+  .logo-pontos i:nth-child(3) { opacity:.4; }
+  .logo b {
+    color:#fff; font-family:var(--f-display); font-size:19px; font-weight:600;
+    letter-spacing:-.01em;
+  }
+  nav ul { list-style:none; display:flex; gap:26px; margin:0; padding:0; flex-wrap:wrap; }
+  nav a {
+    color:#fff; opacity:.86; text-decoration:none; font-size:15.5px;
+  }
+  nav a:hover { opacity:1; text-decoration:underline; }
+  nav a:focus-visible { outline:2px solid #fff; outline-offset:4px; border-radius:3px; }
+
+  /* ── Hero ──────────────────────────────────────────────── */
+  .hero {
+    background:var(--marca); color:#fff;
+    padding:64px 0 80px; text-align:center;
+  }
+  .hero .eyebrow {
+    font-family:var(--f-mono); font-size:11.5px; letter-spacing:.16em;
+    text-transform:uppercase; opacity:.72; margin:0 0 22px;
+  }
+  .hero h1 {
+    font-family:var(--f-display); font-size:clamp(31px,5.2vw,46px);
+    line-height:1.15; letter-spacing:-.015em; margin:0 auto 22px;
+    max-width:17ch; text-wrap:balance;
+  }
+  .hero .sub {
+    font-size:18.5px; opacity:.9; margin:0 auto 34px; max-width:56ch; line-height:1.6;
+  }
+  .botao {
+    display:inline-flex; align-items:center; gap:11px;
+    background:#fff; color:var(--marca);
+    font-weight:600; font-size:17.5px; text-decoration:none;
+    padding:16px 34px; border-radius:7px;
+  }
+  .botao:hover { opacity:.92; }
+  .botao:focus-visible { outline:3px solid #fff; outline-offset:4px; }
+  .botao svg { width:19px; height:19px; flex:none; }
+  .versao {
+    font-family:var(--f-mono); font-size:13px; opacity:.7; margin:16px 0 0;
+  }
+  .hero .alt { font-size:15px; opacity:.82; margin:26px auto 0; max-width:52ch; }
+  .hero .alt a { color:#fff; }
+
+  /* Quem abre o link do WhatsApp no celular não consegue instalar o programa */
+  .so-celular { display:none; }
+  @media (hover:none) and (pointer:coarse) {
+    .so-celular {
+      display:block; margin:-12px auto 26px; max-width:36ch;
+      background:rgba(255,255,255,.12); border-radius:8px;
+      padding:11px 16px; font-size:15.5px; line-height:1.5;
+    }
+  }
+
+  /* Os dois passos da participação, lado a lado no topo */
+  .participar {
+    list-style:none; margin:0 auto; padding:0; max-width:760px;
+    display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:16px; text-align:left;
+  }
+  .participar li {
+    display:grid; grid-template-columns:auto 1fr; column-gap:14px; align-content:start;
+    background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.26);
+    border-radius:10px; padding:20px 22px 22px;
+  }
+  .participar-num {
+    grid-row:span 2; width:34px; height:34px; border-radius:50%;
+    border:1.5px solid rgba(255,255,255,.75);
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--f-mono); font-size:15px;
+  }
+  .participar-titulo { margin:0; font-size:18px; font-weight:600; line-height:1.35; }
+  .participar-info { margin:2px 0 0; font-family:var(--f-mono); font-size:12.5px; opacity:.75; }
+  .participar .botao {
+    grid-column:1 / -1; justify-content:center; margin-top:18px;
+    padding:13px 20px; font-size:16.5px;
+  }
+  @media (max-width:620px) {
+    .participar { grid-template-columns:1fr; }
+  }
+
+  /* Botão cheio, legível nos dois temas */
+  .estudo-acao {
+    display:flex; flex-wrap:wrap; align-items:center; justify-content:center;
+    gap:10px 18px; margin:30px 0 0;
+  }
+  .estudo-acao span { color:var(--muted); font-size:15px; }
+  .botao-cheio {
+    display:inline-flex; align-items:center; gap:10px;
+    background:var(--accent-ink); color:var(--surface);
+    font-weight:600; font-size:16.5px; text-decoration:none;
+    padding:13px 26px; border-radius:7px;
+  }
+  .botao-cheio:hover { opacity:.92; }
+  .botao-cheio:focus-visible { outline:3px solid var(--accent-ink); outline-offset:3px; }
+
+  /* ── Blocos ────────────────────────────────────────────── */
+  section { padding:64px 0; }
+  section.claro { background:var(--surface); border-block:1px solid var(--rule-soft); }
+
+  .titulo-secao { text-align:center; margin-bottom:14px; }
+  .titulo-secao .eyebrow {
+    font-family:var(--f-mono); font-size:11.5px; letter-spacing:.16em;
+    text-transform:uppercase; color:var(--muted); margin:0 0 14px;
+  }
+  h2 {
+    font-family:var(--f-display); font-size:clamp(25px,3.6vw,33px);
+    line-height:1.2; letter-spacing:-.012em; margin:0 auto 12px;
+    max-width:22ch; text-wrap:balance;
+  }
+  .titulo-secao p {
+    color:var(--muted); font-size:16.5px; margin:0 auto 44px; max-width:56ch;
+  }
+
+  h3 { font-size:18px; font-weight:600; margin:0 0 6px; }
+  p { margin:0 0 15px; }
+
+  a { color:var(--accent-ink); text-underline-offset:2px; }
+  a:focus-visible { outline:2px solid var(--marca); outline-offset:3px; border-radius:3px; }
+  code {
+    font-family:var(--f-mono); font-size:.87em; background:var(--sunk);
+    padding:2px 6px; border-radius:3px; word-break:break-word;
+  }
+
+  /* ── Cards de passo ────────────────────────────────────── */
+  .passos {
+    list-style:none; padding:0; margin:0;
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(280px,1fr)); gap:20px;
+  }
+  .passos li {
+    background:var(--surface); border:1px solid var(--rule-soft);
+    border-radius:8px; padding:26px 26px 28px;
+    display:flex; flex-direction:column;
+  }
+  section.claro .passos li { background:var(--ground); }
+  .numero {
+    width:38px; height:38px; border-radius:50%;
+    background:var(--marca); color:#fff;
+    font-family:var(--f-mono); font-size:16px;
+    display:flex; align-items:center; justify-content:center;
+    margin-bottom:18px; flex:none;
+  }
+  .passos p { color:var(--ink-soft); font-size:16px; margin:0 0 12px; }
+  .passos p:last-child { margin:0; }
+  .passos .duracao {
+    font-family:var(--f-mono); font-size:12px; letter-spacing:.06em;
+    text-transform:uppercase; color:var(--muted); margin:0 0 12px;
+  }
+
+  /* ── Aviso ─────────────────────────────────────────────── */
+  .aviso {
+    background:var(--atencao-soft); border-left:6px solid var(--atencao-borda);
+    border-radius:7px; padding:26px 30px; margin:0 auto; max-width:720px;
+  }
+  .aviso .rotulo {
+    font-family:var(--f-mono); font-size:11.5px; font-weight:500;
+    letter-spacing:.13em; text-transform:uppercase; color:var(--atencao);
+    margin:0 0 12px;
+  }
+  .aviso p:last-child { margin:0; }
+
+  /* ── Funções do sistema ────────────────────────────────── */
+  .funcoes { display:grid; gap:16px; }
+  .funcao {
+    background:var(--surface); border:1px solid var(--rule-soft);
+    border-radius:8px; padding:26px 30px;
+  }
+  section.claro .funcao { background:var(--ground); }
+  .funcao .onde {
+    font-family:var(--f-mono); font-size:11.5px; letter-spacing:.08em;
+    text-transform:uppercase; color:var(--muted); margin:0 0 14px;
+  }
+  .funcao p { color:var(--ink-soft); margin:0 0 13px; }
+  .funcao p:last-child { margin:0; }
+  .funcao b { color:var(--ink); }
+
+  /* ── Problemas ─────────────────────────────────────────── */
+  dl.problemas { margin:0; max-width:720px; margin-inline:auto; }
+  dl.problemas dt {
+    font-weight:600; font-size:17.5px;
+    margin-top:26px; padding-top:26px; border-top:1px solid var(--rule);
+  }
+  dl.problemas dt:first-of-type { border-top:none; padding-top:0; margin-top:0; }
+  dl.problemas dd { margin:9px 0 0; color:var(--ink-soft); }
+
+  .encerramento { text-align:center; }
+  .encerramento p { color:var(--ink-soft); max-width:58ch; margin:0 auto 15px; }
+
+  footer {
+    background:var(--marca-fundo); color:#fff; padding:52px 0 44px; font-size:15px;
+  }
+  footer .grade {
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(220px,1fr)); gap:32px;
+  }
+  footer h4 {
+    font-family:var(--f-mono); font-size:11.5px; letter-spacing:.13em;
+    text-transform:uppercase; opacity:.65; margin:0 0 12px; font-weight:500;
+  }
+  footer p { opacity:.88; margin:0 0 12px; line-height:1.5; }
+  footer a { color:#fff; }
+  footer .fim {
+    border-top:1px solid rgba(255,255,255,.16); margin-top:36px; padding-top:22px;
+    opacity:.62; font-size:14px;
+  }
+
+  .url-crua { margin:22px auto 0; max-width:640px; text-align:center; }
+  .url-crua p { font-size:14.5px; color:var(--muted); margin:0 0 10px; }
+  /* O endereço nunca quebra no meio: numa tela estreita ele rola dentro da
+     própria caixa, e o botão desce para a linha de baixo. */
+  .endereco { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:8px; }
+  .endereco code {
+    font-size:14px; padding:8px 12px; border-radius:6px; color:var(--ink);
+    white-space:nowrap; word-break:normal; overflow-x:auto; max-width:100%;
+  }
+  .copiar {
+    font:500 14px var(--f-body); color:var(--accent-ink); background:var(--surface);
+    border:1px solid var(--rule); border-radius:6px; padding:7px 14px; cursor:pointer;
+  }
+  .copiar:hover { border-color:var(--accent-ink); }
+  .copiar:focus-visible { outline:2px solid var(--marca); outline-offset:2px; }
+
+  @media (max-width:620px) {
+    body { font-size:16px; }
+    section { padding:48px 0; }
+    .hero { padding:48px 0 60px; }
+    .funcao, .aviso { padding:22px 20px; }
+    /* Com quatro links o menu quebrava em duas linhas e, fixo no topo,
+       ocupava um quinto da tela do celular. */
+    nav .container { gap:4px 16px; padding-top:10px; padding-bottom:10px; }
+    nav ul { gap:4px 12px; }
+    nav a { font-size:14px; }
+  }
+  @media (prefers-reduced-motion:reduce) { * { transition:none !important; } }
+
+  /* ── Página do termo ── */
+  .termo-topo { background:var(--marca); color:#fff; padding:44px 0 48px; }
+  .termo-topo .eyebrow {
+    font-family:var(--f-mono); font-size:11.5px; letter-spacing:.16em;
+    text-transform:uppercase; opacity:.72; margin:0 0 14px;
+  }
+  .termo-topo h1 {
+    font-family:var(--f-display); font-size:clamp(28px,4.4vw,40px); line-height:1.15;
+    letter-spacing:-.012em; margin:0 0 14px; max-width:22ch; text-wrap:balance;
+  }
+  .termo-topo p { margin:0; opacity:.88; max-width:60ch; }
+  .termo-acoes { display:flex; gap:12px; flex-wrap:wrap; margin-top:22px; }
+  .termo-acoes a {
+    display:inline-flex; align-items:center; gap:8px; color:var(--marca); background:#fff;
+    font-weight:600; font-size:15px; text-decoration:none; padding:10px 18px; border-radius:6px;
+  }
+  .termo-acoes a.secundario { background:transparent; color:#fff; border:1px solid rgba(255,255,255,.55); }
+  .termo-acoes a:focus-visible { outline:3px solid #fff; outline-offset:3px; }
+  .termo { padding:44px 0 64px; }
+  .termo .estreito { max-width:760px; }
+  .termo-secao { padding:0; }
+  .termo-secao + .termo-secao { margin-top:34px; padding-top:30px; border-top:1px solid var(--rule); }
+  .termo-secao h2 { font-size:22px; margin:0 0 14px; max-width:none; text-align:left; }
+  .termo-secao p { color:var(--ink-soft); margin:0 0 14px; line-height:1.72; }
+  .termo-secao p b { color:var(--ink); }
+  .termo-secao p:last-child { margin-bottom:0; }
+  .termo-fim {
+    margin-top:40px; background:var(--accent-soft); border-radius:8px; padding:20px 24px;
+  }
+  .termo-fim p { margin:0; color:var(--ink); }
+  @media print {
+    nav, .termo-acoes, footer, .termo-fim { display:none; }
+    .termo-topo { background:none; color:#000; padding:0 0 12px; }
+    .termo-topo p { opacity:1; }
+    body { background:#fff; }
+  }
+</style>
+</head>
+<body>
+<nav>
+  <div class="container">
+    <a class="logo" href="/" style="text-decoration:none">
+      <span class="logo-pontos" aria-hidden="true"><i></i><i></i><i></i></span>
+      <b>ColorSense</b>
+    </a>
+    <ul>
+      <li><a href="/">Guia do ColorSense</a></li>
+    </ul>
+  </div>
+</nav>
+
+<header class="termo-topo">
+  <div class="container">
+    <p class="eyebrow">Pesquisa ColorSense · PUCPR</p>
+    <h1>Termo de Consentimento Livre e Esclarecido</h1>
+    <p>Leia com calma antes de responder ao formulário do teste. Não é preciso assinar: a sua concordância é marcada no próprio formulário.</p>
+    <div class="termo-acoes">
+      <a href="/termo.pdf">Baixar em PDF</a>
+      <a class="secundario" href="/">Voltar ao guia</a>
+    </div>
+  </div>
+</header>
+
+<main class="termo">
+  <div class="estreito">
+    <section class="termo-secao abertura">
+      <p>Você está sendo convidado(a) como voluntário(a) a participar do estudo ColorSense: avaliação de uma ferramenta de apoio à acessibilidade cromática, realizado como Trabalho de Conclusão de Curso do Bacharelado em Engenharia de Software da Pontifícia Universidade Católica do Paraná (PUCPR). O estudo tem como objetivos: (i) verificar se o filtro de cor do ColorSense, aplicado a toda a tela do computador, ajuda pessoas com daltonismo a distinguir cores que habitualmente confundem; (ii) verificar se o modo Criador do ColorSense, que simula na tela como pessoas com daltonismo enxergam as cores, é útil para quem não tem daltonismo, como desenvolvedores e designers; e (iii) avaliar a facilidade de uso da ferramenta.</p>
+      <p>Acreditamos que esta pesquisa seja importante visto que a deficiência na visão de cores do tipo vermelho-verde atinge cerca de 8% dos homens e entre 0,4% e 0,5% das mulheres, e que editores de código, gráficos e painéis usam a cor com frequência como o único sinal de erros, alertas e estados. As soluções disponíveis costumam atuar de forma isolada: filtros do sistema operacional ajustam apenas a visualização, simuladores mostram o problema sem corrigi-lo e verificadores de contraste avaliam sem adaptar. A relevância e a justificativa desta pesquisa fundamentam-se na escassez de avaliações empíricas, conduzidas com os próprios usuários, sobre a eficácia de ferramentas desse tipo: parte considerável delas apresenta o benefício como pressuposto, sem medição que sustente a afirmação. Este estudo pretende produzir essa medição, comparando as respostas dos participantes sem e com a ferramenta.</p>
+    </section>
+
+    <section class="termo-secao" id="participacao-no-estudo">
+      <h2>Participação no estudo</h2>
+      <p><b>Quem pode participar.</b> Pessoas com 18 anos ou mais, com ou sem daltonismo, que tenham acesso a um computador com sistema Windows 10 ou 11 para instalar o ColorSense, programa gratuito disponibilizado pelos pesquisadores em <a href="/">colorsense-guia.vercel.app</a>.</p>
+      <p><b>Como é a participação.</b> Sua participação consiste em responder a um formulário on-line (Google Forms), no seu próprio computador e no horário que preferir, com duração estimada entre 15 e 20 minutos. No início do formulário você lê este termo, informa o seu e-mail e registra a sua concordância. Em seguida, responde se tem daltonismo, e o formulário segue caminhos diferentes conforme a resposta.</p>
+      <p><b>Se você tem daltonismo ou não sabe dizer.</b> Você informa o que sabe sobre a sua visão de cores e observa 10 pranchas do teste de Ishihara, imagens com números formados por pontos coloridos, escrevendo o número que enxerga em cada uma. As 5 primeiras são vistas com o ColorSense desligado. Depois você instala o programa, escolhe o seu tipo de daltonismo, liga o filtro e observa outras 5 pranchas, diferentes das primeiras. Por fim, responde se percebeu diferença, se o filtro foi útil e se usaria o programa, e responde ao System Usability Scale (SUS), questionário de 10 afirmações sobre a facilidade de uso, podendo deixar comentários. O teste não constitui diagnóstico médico.</p>
+      <p><b>Se você não tem daltonismo.</b> Você informa a sua área de atuação ou de estudo, instala o ColorSense e usa o modo Criador, que simula na tela como pessoas com daltonismo enxergam as cores. Com a simulação ligada, observa uma prancha do teste de Ishihara e a imagem de uma interface e responde o que mudou. Por fim, responde se percebeu diferença, se o modo foi útil e se o usaria, e responde ao SUS, podendo deixar comentários.</p>
+      <p>Para usar o programa é preciso criar uma conta com nome e e-mail e, quando houver, o tipo de daltonismo. Sua participação é voluntária e você poderá retirar o seu consentimento a qualquer momento, sem qualquer prejuízo.</p>
+    </section>
+
+    <section class="termo-secao" id="riscos-e-beneficios">
+      <h2>Riscos e benefícios</h2>
+      <p>Através deste Termo de Consentimento Livre e Esclarecido você está sendo alertado de que, da pesquisa a se realizar, pode esperar alguns benefícios, tais como: benefícios indiretos relacionados ao conhecimento, não sendo previstos ganhos diretos ao participante, como a oportunidade de conhecer uma ferramenta de acessibilidade visual, de perceber como pessoas com daltonismo enxergam as cores e de contribuir para que soluções desse tipo sejam desenvolvidas com base em evidência, e não em suposição.</p>
+      <p>Bem como, também que é possível que aconteçam os seguintes desconfortos ou riscos em sua participação, tais como: leve cansaço visual ou estranhamento causado pela alteração das cores da tela durante o uso do filtro ou da simulação; desconforto ou frustração diante de pranchas que não conseguir ler; eventual desconforto ao responder sobre a sua visão de cores; e o aviso de segurança que o Windows exibe ao instalar programas sem assinatura digital, como é o caso do ColorSense.</p>
+      <p>Para minimizar esses riscos: você pode interromper o formulário ou o uso do programa a qualquer momento, sem justificar; não existe resposta certa ou errada, pois é a ferramenta que está sendo avaliada, e não você; as respostas são confidenciais e nenhum resultado individual é divulgado; e o programa pode ser desinstalado a qualquer momento pelas configurações do Windows. Cabe destacar que o programa altera as cores de toda a tela enquanto está ativo, motivo pelo qual não deve ser utilizado em atividades que dependam de identificação precisa de cor para segurança.</p>
+    </section>
+
+    <section class="termo-secao" id="sigilo-e-privacidade">
+      <h2>Sigilo e privacidade</h2>
+      <p>Nós pesquisadores garantiremos a você que sua privacidade será respeitada, ou seja, seu nome ou qualquer outro dado ou elemento que possa, de qualquer forma, lhe identificar, será mantido em sigilo. Nós pesquisadores nos responsabilizaremos pela guarda e confidencialidade dos dados, bem como a não exposição de quaisquer informações em qualquer formato que possa indicar sua identidade.</p>
+      <p>O e-mail informado no formulário fica junto das suas respostas e é usado somente para localizar a sua participação, caso você peça para retirá-la, e para eventual contato dos pesquisadores sobre o estudo. Por isso as respostas são confidenciais, mas não anônimas. A informação sobre o seu tipo de daltonismo constitui dado pessoal sensível referente à saúde, nos termos do artigo 5º, inciso II, da Lei nº 13.709/2018 (Lei Geral de Proteção de Dados Pessoais), e por esse motivo é tratada mediante o seu consentimento específico, manifestado neste termo.</p>
+      <p>As respostas são armazenadas no Google Forms e no Google Planilhas da equipe, com acesso restrito aos pesquisadores e à orientadora. Os dados da conta do programa (nome, e-mail, tipo de daltonismo e preferências) ficam em um serviço de banco de dados em nuvem usado pelo ColorSense (Supabase). O programa não envia imagens da sua tela a ninguém: a análise usada para desenhar os padrões visuais acontece apenas no próprio computador.</p>
+      <p>Os resultados serão apresentados somente de forma agregada, no Trabalho de Conclusão de Curso e em eventuais publicações acadêmicas, sem qualquer informação que permita identificá-lo(a). Os dados serão guardados por 5 anos após o término da pesquisa e depois eliminados. Você pode, a qualquer tempo, solicitar aos pesquisadores o acesso, a correção ou a eliminação dos seus dados.</p>
+    </section>
+
+    <section class="termo-secao" id="autonomia">
+      <h2>Autonomia</h2>
+      <p>Nós lhe asseguramos assistência durante toda pesquisa, bem como garantiremos seu livre acesso a todas as informações e esclarecimentos adicionais sobre o estudo e suas consequências, enfim, tudo o que você queira saber antes, durante e depois de sua participação. Também informamos que você pode se recusar a participar do estudo, ou retirar seu consentimento a qualquer momento, sem precisar justificar e sem qualquer prejuízo.</p>
+      <p>Para retirar a sua participação depois de enviar o formulário, basta escrever para um dos e-mails dos pesquisadores, indicados abaixo, a partir do mesmo e-mail informado no formulário. As suas respostas serão excluídas, exceto as que já tiverem sido incorporadas, de forma agregada e sem identificação, a resultados divulgados.</p>
+    </section>
+
+    <section class="termo-secao" id="contato">
+      <h2>Contato</h2>
+      <p>Os pesquisadores envolvidos com o referido projeto são Guilherme Henrique Dias (<a href="mailto:g.dias3@pucpr.edu.br">g.dias3@pucpr.edu.br</a>), Enzo Alle Sprengoski (<a href="mailto:enzo.sprengoski@pucpr.edu.br">enzo.sprengoski@pucpr.edu.br</a>) e Murilo Paes Jeronymo (<a href="mailto:murilo.jeronymo@pucpr.edu.br">murilo.jeronymo@pucpr.edu.br</a>), estudantes do Bacharelado em Engenharia de Software da Pontifícia Universidade Católica do Paraná (PUCPR), sob orientação da Profa. Patrícia Rucker de Bassi (<a href="mailto:patricia.rbassi@pucpr.br">patricia.rbassi@pucpr.br</a>). Com eles você poderá manter contato pelos e-mails indicados.</p>
+    </section>
+
+    <section class="termo-secao" id="consentimento">
+      <h2>Consentimento</h2>
+      <p>Ao marcar, no formulário on-line, a opção “Li e aceito os termos do Termo de Consentimento Livre e Esclarecido”, você declara que leu e entendeu as informações deste termo, que teve a oportunidade de esclarecer as suas dúvidas com os pesquisadores e que concorda livremente em participar do estudo, estando ciente de que não há nenhum valor econômico, a receber ou a pagar, por sua participação. Não é necessário assinar este documento.</p>
+      <p>Recomendamos guardar uma cópia deste termo, disponível para leitura e download em <a href="/termo">colorsense-guia.vercel.app/termo</a>, que também pode ser solicitada pelos e-mails dos pesquisadores.</p>
+    </section>
+
+    <div class="termo-fim">
+      <p>Para participar, marque <b>“Li e aceito os termos do Termo de Consentimento Livre e Esclarecido”</b> no <a href="/pesquisa" target="_blank" rel="noopener">formulário da pesquisa</a>.</p>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="container">
+    <div class="grade">
+      <div>
+        <h4>O projeto</h4>
+        <p>ColorSense — ferramenta de acessibilidade visual para pessoas com daltonismo.</p>
+        <p>Trabalho de Conclusão de Curso do Bacharelado em Engenharia de Software (BES) da Pontifícia Universidade Católica do Paraná.</p>
+        <p><a href="/termo">Termo de Consentimento Livre e Esclarecido</a></p>
+        <p><a href="/pesquisa" target="_blank" rel="noopener">Formulário da pesquisa</a></p>
+      </div>
+      <div>
+        <h4>Pesquisadores</h4>
+        <p>Guilherme Dias<br><a href="mailto:g.dias3@pucpr.edu.br">g.dias3@pucpr.edu.br</a></p>
+        <p>Enzo Sprengoski<br><a href="mailto:enzo.sprengoski@pucpr.edu.br">enzo.sprengoski@pucpr.edu.br</a></p>
+        <p>Murilo Jeronymo<br><a href="mailto:murilo.jeronymo@pucpr.edu.br">murilo.jeronymo@pucpr.edu.br</a></p>
+      </div>
+      <div>
+        <h4>Orientação</h4>
+        <p>Profa. Patrícia Rucker de Bassi<br><a href="mailto:patricia.rbassi@pucpr.br">patricia.rbassi@pucpr.br</a></p>
+      </div>
+    </div>
+    <p class="fim">
+      Código aberto em
+      <a href="https://github.com/enzoelle123/Color-Sense">github.com/enzoelle123/Color-Sense</a>
+    </p>
+  </div>
+</footer>
+
+</body>
+</html>

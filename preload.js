@@ -20,6 +20,11 @@ contextBridge.exposeInMainWorld('colorSenseAPI', {
   colorName:    (hex)        => ipcRenderer.invoke('color:name', hex),
   analyzeColors:(hex1, hex2) => ipcRenderer.invoke('checker:analyze', hex1, hex2),
 
+  // Tipos com correção possível e aviso de filtro aplicado (versão de validação)
+  getFilterInfo:   ()       => ipcRenderer.invoke('filters:get-info'),
+  onApplyFilter:   (cb)     => ipcRenderer.on('apply-filter', (_, data) => cb(data)),
+  removeApplyFilter: ()     => ipcRenderer.removeAllListeners('apply-filter'),
+
   // Auth
   signUp:     (data)  => ipcRenderer.invoke('auth:sign-up', data),
   signIn:     (data)  => ipcRenderer.invoke('auth:sign-in', data),
@@ -41,10 +46,11 @@ contextBridge.exposeInMainWorld('colorSenseAPI', {
   getSimState:   ()        => ipcRenderer.invoke('sim:get-state'),
   toggleSim:     (enabled) => ipcRenderer.invoke('sim:toggle', enabled),
   setSimType:    (type)    => ipcRenderer.invoke('sim:set-type', type),
+  // O processo principal avisa quando desliga a simulação por conta do
+  // toggle universal, para a aba Criador não ficar mostrando estado velho.
+  onSimChange:   (cb)      => ipcRenderer.on('sim:changed', (_, data) => cb(data)),
 
   // Renderer → main: login concluído
   notifyAuthSuccess: () => ipcRenderer.send('auth:success'),
 
-  // Main → renderer
-  onAuthChange: (cb) => ipcRenderer.on('auth:changed', (_, data) => cb(data))
 });
